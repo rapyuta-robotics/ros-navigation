@@ -158,7 +158,7 @@ namespace move_base {
     }
 
     //initially, we'll need to make a plan
-    state_ = PLANNING;
+    state_ = CONTROLLING;
 
     //we'll start executing recovery behaviors at the beginning of our list
     recovery_index_ = 0;
@@ -601,7 +601,7 @@ namespace move_base {
         lock.unlock();
       }
       //if we didn't get a plan and we are in the planning state (the robot isn't moving)
-      else if(state_==PLANNING){
+      else {
         ROS_DEBUG_NAMED("move_base_plan_thread","No Plan...");
         ros::Time attempt_end = last_valid_plan_ + ros::Duration(planner_patience_);
 
@@ -692,7 +692,6 @@ namespace move_base {
 
           //we'll make sure that we reset our state for the next execution cycle
           recovery_index_ = 0;
-          state_ = PLANNING;
 
           //we have a new goal so make sure the planner is awake
           lock.lock();
@@ -730,7 +729,6 @@ namespace move_base {
 
         //we want to go back to the planning state for the next execution cycle
         recovery_index_ = 0;
-        state_ = PLANNING;
 
         //we have a new goal so make sure the planner is awake
         lock.lock();
@@ -858,16 +856,6 @@ namespace move_base {
 
     //the move_base state machine, handles the control logic for navigation
     switch(state_){
-      //if we are in a planning state, then we'll attempt to make a plan
-      case PLANNING:
-        {
-          boost::recursive_mutex::scoped_lock lock(planner_mutex_);
-          runPlanner_ = true;
-          planner_cond_.notify_one();
-        }
-        ROS_DEBUG_NAMED("move_base","Waiting for plan, in the planning state.");
-        break;
-
       //if we're controlling, we'll attempt to find valid velocity commands
       case CONTROLLING:
         ROS_DEBUG_NAMED("move_base","In controlling state.");
@@ -922,7 +910,6 @@ namespace move_base {
             //otherwise, if we can't find a valid control, we'll go back to planning
             last_valid_plan_ = ros::Time::now();
             planning_retries_ = 0;
-            state_ = PLANNING;
             publishZeroVelocity();
 
             //enable the planner thread in case it isn't running on a clock
@@ -951,7 +938,7 @@ namespace move_base {
           ROS_DEBUG_NAMED("move_base_recovery","Going back to planning state");
           last_valid_plan_ = ros::Time::now();
           planning_retries_ = 0;
-          state_ = PLANNING;
+          state_ = CONTROLLING;
 
           //update the index of the next recovery behavior that we'll try
           recovery_index_++;
@@ -1124,7 +1111,7 @@ namespace move_base {
     lock.unlock();
 
     // Reset statemachine
-    state_ = PLANNING;
+    state_ = CONTROLLING;
     recovery_index_ = 0;
     recovery_trigger_ = PLANNING_R;
     publishZeroVelocity();

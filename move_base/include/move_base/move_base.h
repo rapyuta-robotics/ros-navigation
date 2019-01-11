@@ -64,7 +64,6 @@ namespace move_base {
   typedef actionlib::SimpleActionServer<move_base_msgs::MoveBaseAction> MoveBaseActionServer;
 
   enum MoveBaseState {
-    PLANNING,
     CONTROLLING,
     CLEARING
   };
