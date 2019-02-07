@@ -4,7 +4,7 @@
 #include <libgen.h>
 
 MapServer::MapServer(const std::string& fname) {
-    std::string mapfname = "";
+    std::string mapfname;
 
     float res;
     bool negate;
