@@ -10,7 +10,14 @@ set(PKG_DEPS
 add_compile_options(-std=c++11)
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(YAMLCPP REQUIRED yaml-cpp)
+pkg_check_modules(YAML_CPP REQUIRED yaml-cpp)
+find_path(YAML_CPP_INCLUDE_DIR
+    NAMES yaml_cpp.h
+    PATHS ${YAML_CPP_INCLUDE_DIRS})
+find_library(YAML_CPP_LIBRARY
+    NAMES YAML_CPP
+    PATHS ${YAML_CPP_LIBRARY_DIRS})
+link_directories(${YAML_CPP_LIBRARY_DIRS})
 
 find_package(catkin REQUIRED COMPONENTS ${PKG_DEPS})
 find_package(Bullet REQUIRED)
@@ -26,6 +33,7 @@ catkin_package(
     INCLUDE_DIRS include
     LIBRARIES map_server_image_loader
     CATKIN_DEPENDS ${PKG_DEPS}
+    DEPENDS YAML_CPP
 )
 
 ###########
@@ -54,8 +62,8 @@ add_executable(map_server src/main.cpp src/map_server.cpp src/map_server_updater
 add_dependencies(map_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(map_server
     map_server_image_loader
-    ${YAMLCPP_LIBRARY}
     ${catkin_LIBRARIES}
+    yaml-cpp
 )
 
 add_executable(map_server-map_saver src/map_saver.cpp)
