@@ -6,6 +6,7 @@ set(PKG_DEPS
     nav_msgs
     tf2
     rr_common_config
+    rr_base_utils
 )
 
 find_package(catkin REQUIRED COMPONENTS ${PKG_DEPS})

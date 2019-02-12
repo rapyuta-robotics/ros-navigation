@@ -7,12 +7,12 @@ MapServer::MapServer(const std::string& fname) {
     std::string mapfname;
 
     float res;
-    bool negate;
+    float negate;
 
     double origin[3];
     double occ_th, free_th;
 
-    MapMode mode = TRINARY;
+    MapMode mode;
     std::string frame_id;
     ros::NodeHandle private_nh("~");
     private_nh.param("frame_id", frame_id, std::string("map"));
@@ -28,7 +28,7 @@ MapServer::MapServer(const std::string& fname) {
     }
 
     try {
-        negate = doc["negate"].as<bool>();
+        negate = doc["negate"].as<float>();
     } catch (const YAML::InvalidScalar&) {
         ROS_FATAL_STREAM("The map does not contain a negate tag or it is invalid.");
         exit(0);
@@ -52,11 +52,11 @@ MapServer::MapServer(const std::string& fname) {
         std::string mode_str = doc["mode"].as<std::string>();
 
         if (mode_str == "trinary")
-            mode = TRINARY;
+            mode = MapMode::TRINARY;
         else if (mode_str == "scale")
-            mode = SCALE;
+            mode = MapMode::SCALE;
         else if (mode_str == "raw")
-            mode = RAW;
+            mode = MapMode::RAW;
         else {
             ROS_FATAL("Invalid mode tag \"%s\".", mode_str.c_str());
             exit(0);
@@ -64,7 +64,7 @@ MapServer::MapServer(const std::string& fname) {
 
     } catch (const YAML::Exception&) {
         ROS_DEBUG_STREAM("The map does not contain a mode tag or it is invalid... assuming Trinary");
-        mode = TRINARY;
+        mode = MapMode::TRINARY;
     }
 
     try {

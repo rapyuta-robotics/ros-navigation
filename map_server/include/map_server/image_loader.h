@@ -16,7 +16,7 @@
  *  RAW -
  *      value = value
  */
-enum MapMode { TRINARY, SCALE, RAW };
+enum class MapMode { TRINARY, SCALE, RAW };
 
 namespace map_server {
 
@@ -35,5 +35,5 @@ namespace map_server {
  * @throws std::runtime_error If the image file can't be loaded
  * */
 void loadMapFromFile(nav_msgs::GetMap::Response* resp, const char* fname, const double res, const bool negate,
-        const double occ_th, const double free_th, const double* origin, const MapMode mode = TRINARY);
+        const double occ_th, const double free_th, const double* origin, const MapMode mode = MapMode::TRINARY);
 }  // namespace map_server

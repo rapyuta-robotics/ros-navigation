@@ -59,7 +59,7 @@ void loadMapFromFile(nav_msgs::GetMap::Response* resp, const char* fname, const 
 
     // NOTE: Trinary mode still overrides here to preserve existing behavior.
     // Alpha will be averaged in with color channels when using trinary mode.
-    if (mode == TRINARY || !img->format->Amask)
+    if (mode == MapMode::TRINARY || !img->format->Amask)
         avg_channels = n_channels;
     else
         avg_channels = n_channels - 1;
@@ -83,7 +83,7 @@ void loadMapFromFile(nav_msgs::GetMap::Response* resp, const char* fname, const 
             if (negate)
                 color_avg = 255 - color_avg;
 
-            if (mode == RAW) {
+            if (mode == MapMode::RAW) {
                 value = color_avg;
                 resp->map.data[MAP_IDX(resp->map.info.width, i, resp->map.info.height - j - 1)] = value;
                 continue;
@@ -100,7 +100,7 @@ void loadMapFromFile(nav_msgs::GetMap::Response* resp, const char* fname, const 
                 value = +100;
             else if (occ < free_th)
                 value = 0;
-            else if (mode == TRINARY || alpha < 1.0)
+            else if (mode == MapMode::TRINARY || alpha < 1.0)
                 value = -1;
             else {
                 double ratio = (occ - free_th) / (occ_th - free_th);
