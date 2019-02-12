@@ -1,9 +1,6 @@
 #define USAGE                                           \
     "\nUSAGE: map_server <map.yaml>\n"                  \
-    "  map.yaml: map description file\n"                \
-    "DEPRECATED USAGE: map_server <map> <resolution>\n" \
-    "  map: image file to load\n"                       \
-    "  resolution: map resolution [meters/pixel]"
+    "  map.yaml: map description file\n"
 
 #include <string>
 #include <memory>
