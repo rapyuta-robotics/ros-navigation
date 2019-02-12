@@ -10,8 +10,6 @@
 
 #include <map_server/map_server.h>
 #include <map_server/map_server_updater.h>
-#include <rr_common_config/common.h>
-#include <rr_base_utils/params.hpp>
 
 int main(int argc, char** argv) {
     ros::init(argc, argv, "map_server");
@@ -22,8 +20,9 @@ int main(int argc, char** argv) {
 
     std::string fname(argv[1]);
 
-    bool use_local_map;
-    rapyuta::base::get_ros_param(ros::NodeHandle{"~"}, "use_local_map", use_local_map);
+    bool use_local_map = true;
+    ros::NodeHandle nh{"~"};
+    nh.getParam("use_local_map", use_local_map);
 
     try {
         if (use_local_map) {

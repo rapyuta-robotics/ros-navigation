@@ -5,16 +5,18 @@ set(PKG_DEPS
     roscpp
     nav_msgs
     tf2
-    rr_common_config
-    rr_base_utils
 )
+
+add_compile_options(-std=c++11)
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(YAMLCPP REQUIRED yaml-cpp)
 
 find_package(catkin REQUIRED COMPONENTS ${PKG_DEPS})
 find_package(Bullet REQUIRED)
 find_package(SDL REQUIRED)
 find_package(SDL_image REQUIRED)
 find_package(PkgConfig REQUIRED)
-find_package(YamlCpp REQUIRED)
 
 ###################################
 ## catkin specific configuration ##
