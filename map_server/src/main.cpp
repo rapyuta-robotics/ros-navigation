@@ -19,7 +19,10 @@ int main(int argc, char** argv) {
 
     bool use_local_map = true;
     ros::NodeHandle nh{"~"};
-    nh.getParam("use_local_map", use_local_map);
+    bool has_param = nh.getParam("use_local_map", use_local_map);
+    if (!has_param) {
+        use_local_map = true;
+    }
 
     try {
         if (use_local_map) {
