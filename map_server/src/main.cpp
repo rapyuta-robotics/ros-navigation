@@ -33,11 +33,12 @@ int main(int argc, char** argv) {
         if (use_local_map) {
             if (argc == 2) {
                 MapServer ms(fname);
+                ros::spin();
             } else {
                 MapServer ms(fname, res);
+                ros::spin();
             }
 
-            ros::spin();
         } else {
             MapServerUpdater ms(fname);
             ros::spin();
