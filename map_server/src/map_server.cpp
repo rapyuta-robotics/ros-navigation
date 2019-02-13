@@ -128,6 +128,55 @@ MapServer::MapServer(const std::string& fname) {
     _map_pub.publish(_map_resp.map);
 }
 
+MapServer::MapServer(const std::string& fname, const double res) {
+    std::string mapfname = fname;
+
+    float negate = 0;
+
+    double origin[3] = {0, 0, 0};
+    double occ_th = 0.65, free_th = 0.196;
+
+    MapMode mode;
+    std::string frame_id;
+
+    ros::NodeHandle private_nh("~");
+    private_nh.getParam("negate", negate);
+    private_nh.getParam("occupied_thresh", occ_th);
+    private_nh.getParam("free_thresh", free_th);
+
+    ROS_INFO_STREAM("Loading map from image: " << mapfname);
+
+    try {
+        map_server::loadMapFromFile(&_map_resp, mapfname.c_str(), res, negate, occ_th, free_th, origin, mode);
+    } catch (std::runtime_error e) {
+        ROS_ERROR("%s", e.what());
+        exit(-1);
+    }
+
+    // To make sure get a consistent time in simulation
+    ros::Time::waitForValid();
+
+    _map_resp.map.info.map_load_time = ros::Time::now();
+    _map_resp.map.header.frame_id = frame_id;
+    _map_resp.map.header.stamp = ros::Time::now();
+
+    ROS_INFO("Read a %d X %d map @ %.3lf m/cell", _map_resp.map.info.width, _map_resp.map.info.height,
+             _map_resp.map.info.resolution);
+
+    _meta_data_message = _map_resp.map.info;
+
+    _service = _nh.advertiseService("static_map", &MapServer::mapCallback, this);
+
+    // Latched publisher for metadata
+    _metadata_pub = _nh.advertise<nav_msgs::MapMetaData>("map_metadata", 1, true);
+    _metadata_pub.publish(_meta_data_message);
+
+    // Latched publisher for data
+    _map_pub = _nh.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
+    _map_pub.publish(_map_resp.map);
+
+}
+
 bool MapServer::mapCallback(nav_msgs::GetMap::Request& req, nav_msgs::GetMap::Response& res) {
     res = _map_resp;
     ROS_INFO("Sending map");

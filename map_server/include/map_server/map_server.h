@@ -7,6 +7,7 @@
 class MapServer {
 public:
     MapServer(const std::string& fname);
+    MapServer(const std::string& fname, const double res);
 
 private:
     /** Callback invoked when someone requests our service */
