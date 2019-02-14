@@ -31,7 +31,10 @@
 
 #define USAGE                                           \
     "\nUSAGE: map_server <map.yaml>\n"                  \
-    "  map.yaml: map description file\n"
+    "  map.yaml: map description file\n"                \
+    "DEPRECATED USAGE: map_server <map> <resolution>\n" \
+    "  map: image file to load\n"                       \
+    "  resolution: map resolution [meters/pixel]"
 
 #include <string>
 #include <memory>
@@ -53,20 +56,19 @@ int main(int argc, char** argv) {
     std::string fname(argv[1]);
     double res = (argc == 2) ? 0.0 : atof(argv[2]);
 
-    bool use_local_map = true;
     ros::NodeHandle nh{"~"};
-    bool has_param = nh.getParam("use_local_map", use_local_map);
-    if (!has_param) {
-        use_local_map = true;
-    }
+    bool use_local_map;
+    nh.param("use_local_map", use_local_map, true);
 
     try {
         if (use_local_map) {
             if (argc == 2) {
                 MapServer ms(fname);
+                ms.start();
                 ros::spin();
             } else {
                 MapServer ms(fname, res);
+                ms.start();
                 ros::spin();
             }
 

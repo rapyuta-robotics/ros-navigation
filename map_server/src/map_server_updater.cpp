@@ -7,8 +7,9 @@ MapServerUpdater::MapServerUpdater(const std::string& fname)
     ros::NodeHandle nh;
     _map_changed_subscriber = nh.subscribe("/map_changed", 1, &MapServerUpdater::mapChangedCallback, this);
 
+    _map_server.reset(new MapServer(fname));
     try {
-        _map_server.reset(new MapServer(fname));
+        _map_server->start();
     } catch (const YAML::BadFile& ex) {
         ROS_WARN_STREAM(fname << " not found: " << ex.what());
     }
@@ -16,8 +17,9 @@ MapServerUpdater::MapServerUpdater(const std::string& fname)
 }
 
 void MapServerUpdater::mapChangedCallback(const std_msgs::Empty& msg) {
+    _map_server.reset(new MapServer(_fname));
     try {
-        _map_server.reset(new MapServer(_fname));
+        _map_server->start();
     } catch (const YAML::BadFile& ex) {
         ROS_FATAL_STREAM(_fname << " not found after Map Changed called: " << ex.what());
         exit(0);

@@ -3,7 +3,15 @@
 #include <yaml-cpp/yaml.h>
 #include <libgen.h>
 
-MapServer::MapServer(const std::string& fname) {
+MapServer::MapServer(const std::string& fname) : _fname(fname) , _res(0) {}
+
+MapServer::MapServer(const std::string& fname, const double res) : _fname(fname) , _res(res)  {}
+
+void MapServer::start() {
+    if (_res != 0.0) {
+        start_deprecated();
+    }
+
     std::string mapfname;
 
     float res;
@@ -113,7 +121,7 @@ MapServer::MapServer(const std::string& fname) {
     _map_resp.map.header.stamp = ros::Time::now();
 
     ROS_INFO("Read a %d X %d map @ %.3lf m/cell", _map_resp.map.info.width, _map_resp.map.info.height,
-            _map_resp.map.info.resolution);
+             _map_resp.map.info.resolution);
 
     _meta_data_message = _map_resp.map.info;
 
@@ -128,7 +136,8 @@ MapServer::MapServer(const std::string& fname) {
     _map_pub.publish(_map_resp.map);
 }
 
-MapServer::MapServer(const std::string& fname, const double res) {
+void MapServer::start_deprecated() {
+    MapServer::MapServer(const std::string& fname, const double res) {
     std::string mapfname = fname;
 
     float negate = 0;
@@ -174,7 +183,6 @@ MapServer::MapServer(const std::string& fname, const double res) {
     // Latched publisher for data
     _map_pub = _nh.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
     _map_pub.publish(_map_resp.map);
-
 }
 
 bool MapServer::mapCallback(nav_msgs::GetMap::Request& req, nav_msgs::GetMap::Response& res) {
