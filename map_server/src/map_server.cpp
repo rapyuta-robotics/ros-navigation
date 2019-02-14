@@ -14,6 +14,7 @@ MapServer::MapServer(const std::string& fname, const double res)
 void MapServer::start() {
     if (_res != 0.0) {
         start_deprecated();
+        return;
     }
 
     std::string mapfname;
