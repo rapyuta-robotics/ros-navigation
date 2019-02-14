@@ -91,7 +91,7 @@ MapServer::MapServer(const std::string& fname) {
             free(fname_copy);
         }
 
-    } catch (YAML::InvalidScalar) {
+    } catch (const YAML::InvalidScalar&) {
         ROS_ERROR("The map does not contain an image tag or it is invalid.");
         exit(-1);
     }
