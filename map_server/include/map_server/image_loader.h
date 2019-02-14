@@ -28,8 +28,6 @@
  */
 
 /*
- * This file contains helper functions for loading images as maps.
- *
  * Author: Brian Gerkey
  */
 
