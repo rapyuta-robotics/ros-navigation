@@ -3,9 +3,13 @@
 #include <yaml-cpp/yaml.h>
 #include <libgen.h>
 
-MapServer::MapServer(const std::string& fname) : _fname(fname) , _res(0) {}
+MapServer::MapServer(const std::string& fname)
+        : _fname(fname)
+        , _res(0) {}
 
-MapServer::MapServer(const std::string& fname, const double res) : _fname(fname) , _res(res)  {}
+MapServer::MapServer(const std::string& fname, const double res)
+        : _fname(fname)
+        , _res(res) {}
 
 void MapServer::start() {
     if (_res != 0.0) {
@@ -26,7 +30,7 @@ void MapServer::start() {
     private_nh.param("frame_id", frame_id, std::string("map"));
 
     // Load map file information
-    YAML::Node doc = YAML::LoadFile(fname);
+    YAML::Node doc = YAML::LoadFile(_fname);
 
     try {
         res = doc["resolution"].as<float>();
@@ -94,7 +98,7 @@ void MapServer::start() {
 
         if (mapfname[0] != '/') {
             // dirname can modify what you pass it
-            char* fname_copy = strdup(fname.c_str());
+            char* fname_copy = strdup(_fname.c_str());
             mapfname = std::string(dirname(fname_copy)) + '/' + mapfname;
             free(fname_copy);
         }
@@ -121,7 +125,7 @@ void MapServer::start() {
     _map_resp.map.header.stamp = ros::Time::now();
 
     ROS_INFO("Read a %d X %d map @ %.3lf m/cell", _map_resp.map.info.width, _map_resp.map.info.height,
-             _map_resp.map.info.resolution);
+            _map_resp.map.info.resolution);
 
     _meta_data_message = _map_resp.map.info;
 
@@ -137,8 +141,7 @@ void MapServer::start() {
 }
 
 void MapServer::start_deprecated() {
-    MapServer::MapServer(const std::string& fname, const double res) {
-    std::string mapfname = fname;
+    std::string mapfname = _fname;
 
     float negate = 0;
 
@@ -156,7 +159,7 @@ void MapServer::start_deprecated() {
     ROS_INFO_STREAM("Loading map from image: " << mapfname);
 
     try {
-        map_server::loadMapFromFile(&_map_resp, mapfname.c_str(), res, negate, occ_th, free_th, origin, mode);
+        map_server::loadMapFromFile(&_map_resp, mapfname.c_str(), _res, negate, occ_th, free_th, origin, mode);
     } catch (std::runtime_error e) {
         ROS_ERROR("%s", e.what());
         exit(-1);
@@ -170,7 +173,7 @@ void MapServer::start_deprecated() {
     _map_resp.map.header.stamp = ros::Time::now();
 
     ROS_INFO("Read a %d X %d map @ %.3lf m/cell", _map_resp.map.info.width, _map_resp.map.info.height,
-             _map_resp.map.info.resolution);
+            _map_resp.map.info.resolution);
 
     _meta_data_message = _map_resp.map.info;
 

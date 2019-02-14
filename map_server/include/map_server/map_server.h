@@ -9,8 +9,9 @@ public:
     explicit MapServer(const std::string& fname);
     explicit MapServer(const std::string& fname, const double res);
 
-private:
     void start();
+    void start_deprecated();
+private:
 
     /** Callback invoked when someone requests our service */
     bool mapCallback(nav_msgs::GetMap::Request& req, nav_msgs::GetMap::Response& res);
@@ -21,7 +22,7 @@ private:
     ros::ServiceServer _service;
 
     std::string _fname;
-    std::string _res;
+    double _res;
 
     nav_msgs::MapMetaData _meta_data_message;
     nav_msgs::GetMap::Response _map_resp;

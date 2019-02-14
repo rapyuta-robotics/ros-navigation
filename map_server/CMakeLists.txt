@@ -10,14 +10,13 @@ set(PKG_DEPS
 add_compile_options(-std=c++11)
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(YAML_CPP REQUIRED yaml-cpp)
-find_path(YAML_CPP_INCLUDE_DIR
+pkg_check_modules(YAMLCPP REQUIRED yaml-cpp)
+find_path(YAMLCPP_INCLUDE_DIRS
     NAMES yaml_cpp.h
-    PATHS ${YAML_CPP_INCLUDE_DIRS})
-find_library(YAML_CPP_LIBRARY
-    NAMES YAML_CPP
-    PATHS ${YAML_CPP_LIBRARY_DIRS})
-link_directories(${YAML_CPP_LIBRARY_DIRS})
+    PATHS ${YAMLCPP_INCLUDE_DIRS})
+find_library(YAMLCPP_LIBRARIES
+    NAMES YAMLCPP
+    PATHS ${YAMLCPP_LIBRARY_DIRS})
 
 find_package(catkin REQUIRED COMPONENTS ${PKG_DEPS})
 find_package(Bullet REQUIRED)
@@ -33,7 +32,7 @@ catkin_package(
     INCLUDE_DIRS include
     LIBRARIES map_server_image_loader
     CATKIN_DEPENDS ${PKG_DEPS}
-    DEPENDS YAML_CPP
+    DEPENDS YAMLCPP
 )
 
 ###########
@@ -46,7 +45,7 @@ include_directories(
     ${catkin_INCLUDE_DIRS}
     ${SDL_INCLUDE_DIR}
     ${SDL_IMAGE_INCLUDE_DIRS}
-    ${YAMLCPP_INCLUDE_DIR}
+    ${YAMLCPP_INCLUDE_DIRS}
 )
 
 add_library(map_server_image_loader src/image_loader.cpp)
@@ -63,7 +62,7 @@ add_dependencies(map_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTE
 target_link_libraries(map_server
     map_server_image_loader
     ${catkin_LIBRARIES}
-    yaml-cpp
+    ${YAMLCPP_LIBRARIES}
 )
 
 add_executable(map_server-map_saver src/map_saver.cpp)
