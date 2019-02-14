@@ -10,7 +10,7 @@ MapServerUpdater::MapServerUpdater(const std::string& fname)
     try {
         _map_server.reset(new MapServer(fname));
     } catch (const YAML::BadFile& ex) {
-        ROS_WARN_STREAM(fname << "not found: " << ex.what());
+        ROS_WARN_STREAM(fname << " not found: " << ex.what());
     }
 
 }
