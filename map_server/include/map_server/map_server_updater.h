@@ -7,7 +7,7 @@
 
 class MapServerUpdater {
 public:
-    MapServerUpdater(const std::string& fname);
+    explicit MapServerUpdater(const std::string& fname);
 
 private:
     std::unique_ptr<MapServer> _map_server;
