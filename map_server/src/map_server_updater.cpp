@@ -5,7 +5,7 @@
 MapServerUpdater::MapServerUpdater(const std::string& fname)
         : _fname(fname) {
     ros::NodeHandle nh;
-    _map_changed_subscriber = nh.subscribe("/map_changed", 1, &MapServerUpdater::mapChangedCallback, this);
+    _map_changed_subscriber = nh.subscribe("map_changed", 1, &MapServerUpdater::mapChangedCallback, this);
 
     _map_server.reset(new MapServer(fname));
     try {
