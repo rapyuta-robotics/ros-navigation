@@ -26,14 +26,14 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef MAP_SERVER_MAP_SERVER_H
-#define MAP_SERVER_MAP_SERVER_H
 
 /*
  * Author: Brian Gerkey
  */
 
-#include "nav_msgs/GetMap.h"
+#pragma once
+
+#include <nav_msgs/GetMap.h>
 
 /** Map mode
  *  Default: TRINARY -
@@ -49,10 +49,9 @@
  *  RAW -
  *      value = value
  */
-enum MapMode {TRINARY, SCALE, RAW};
+enum class MapMode { TRINARY, SCALE, RAW };
 
-namespace map_server
-{
+namespace map_server {
 
 /** Read the image from file and fill out the resp object, for later
  * use when our services are requested.
@@ -68,10 +67,6 @@ namespace map_server
  * @param mode Map mode
  * @throws std::runtime_error If the image file can't be loaded
  * */
-void loadMapFromFile(nav_msgs::GetMap::Response* resp,
-                     const char* fname, double res, bool negate,
-                     double occ_th, double free_th, double* origin,
-                     MapMode mode=TRINARY);
-}
-
-#endif
+void loadMapFromFile(nav_msgs::GetMap::Response* resp, const char* fname, const double res, const bool negate,
+        const double occ_th, const double free_th, const double* origin, const MapMode mode = MapMode::TRINARY);
+}  // namespace map_server
