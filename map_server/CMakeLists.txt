@@ -5,6 +5,8 @@ set(PKG_DEPS
     roscpp
     nav_msgs
     tf2
+    sootballs_common
+    rr_base_utils
 )
 
 add_compile_options(-std=c++11)

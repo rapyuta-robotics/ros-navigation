@@ -21,6 +21,7 @@ private:
     ros::Publisher _metadata_pub;
     ros::ServiceServer _service;
 
+    std::string _map_lock_file_path;
     std::string _fname;
     double _res;
 
