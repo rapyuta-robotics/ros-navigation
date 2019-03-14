@@ -1,17 +1,10 @@
 #include "map_server/map_server.h"
 
-#include <map_server/image_loader.h>
 #include <yaml-cpp/yaml.h>
 #include <libgen.h>
 
-#include <rr_base_utils/params.hpp>
-
-#include <sootballs_common/file_lock.hpp>
-
-using rapyuta::base::get_ros_param;
-
-using sootballs::common::LOCK_TYPE;
-using sootballs::common::FileLock;
+#include <map_server/file_lock.h>
+#include <map_server/image_loader.h>
 
 MapServer::MapServer(const std::string& fname)
         : _fname(fname)
@@ -39,11 +32,11 @@ void MapServer::start() {
     std::string frame_id;
     ros::NodeHandle private_nh("~");
     private_nh.param("frame_id", frame_id, std::string("map"));
-    get_ros_param(private_nh, "map_lock_file_path", _map_lock_file_path);
+    private_nh.getParam("map_lock_file_path", _map_lock_file_path);
 
+    // Load map file information
     YAML::Node doc;
     {
-        // Load map file information
         FileLock<LOCK_TYPE::READ> file_lock(_map_lock_file_path);
         doc = YAML::LoadFile(_fname);
     }
@@ -172,10 +165,12 @@ void MapServer::start_deprecated() {
     private_nh.getParam("negate", negate);
     private_nh.getParam("occupied_thresh", occ_th);
     private_nh.getParam("free_thresh", free_th);
+    private_nh.getParam("map_lock_file_path", _map_lock_file_path);
 
     ROS_INFO_STREAM("Loading map from image: " << mapfname);
 
     try {
+        FileLock<LOCK_TYPE::READ> file_lock(_map_lock_file_path);
         map_server::loadMapFromFile(&_map_resp, mapfname.c_str(), _res, negate, occ_th, free_th, origin, mode);
     } catch (std::runtime_error e) {
         ROS_ERROR("%s", e.what());
