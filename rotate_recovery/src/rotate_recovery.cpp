@@ -101,6 +101,8 @@ void RotateRecovery::runBehavior(){
   double rotated_angle = 0.0;
   double prev_yaw = tf::getYaw(global_pose.getRotation());
   const double dir = rotate_positive_ ? 1.0 : -1.0;
+  const double max_stopping_distance =
+      acc_lim_th_ > 0 ? max_rotational_vel_ * max_rotational_vel_ / (2.0 * acc_lim_th_) : M_PI_4;
 
   while(n.ok()){
     local_costmap_->getRobotPose(global_pose);
@@ -111,7 +113,7 @@ void RotateRecovery::runBehavior(){
     prev_yaw = current_yaw;
 
     //compute the distance left to rotate
-    const double dist_left = 2 * M_PI - rotated_angle;
+    double dist_left = 2 * M_PI - rotated_angle;
 
     const double x = global_pose.getOrigin().x(), y = global_pose.getOrigin().y();
 
@@ -123,8 +125,20 @@ void RotateRecovery::runBehavior(){
       //make sure that the point is legal, if it isn't... we'll abort
       double footprint_cost = world_model_->footprintCost(x, y, theta, local_costmap_->getRobotFootprint(), 0.0, 0.0);
       if(footprint_cost < 0.0){
-        ROS_ERROR("Rotate recovery can't rotate in place because there is a potential collision. Cost: %.2f", footprint_cost);
-        return;
+        // only allow to rotate to the obstacle, minus some buffer
+        dist_left = sim_angle - 2 * max_stopping_distance;
+        if (dist_left < 0) {
+          ROS_ERROR("Rotate recovery stops rotating in place because there is a potential collision. Cost: %.2f", footprint_cost);
+          geometry_msgs::Twist cmd_vel;
+          cmd_vel.linear.x = 0.0;
+          cmd_vel.linear.y = 0.0;
+          cmd_vel.angular.z = 0.0;
+
+          vel_pub.publish(cmd_vel);
+          return;
+        }
+        ROS_DEBUG("Rotate recovery slowing down because there is a potential collision %.2f [rad] away", sim_angle);
+        break;
       }
 
       sim_angle += sim_granularity_;
