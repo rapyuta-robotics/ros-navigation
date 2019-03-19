@@ -41,8 +41,9 @@
 PLUGINLIB_EXPORT_CLASS(rotate_recovery::RotateRecovery, nav_core::RecoveryBehavior)
 
 namespace rotate_recovery {
-RotateRecovery::RotateRecovery(): global_costmap_(NULL), local_costmap_(NULL),
-  tf_(NULL), initialized_(false), world_model_(NULL) {}
+
+RotateRecovery::RotateRecovery(): rotate_positive_(true), global_costmap_(NULL),
+  local_costmap_(NULL), tf_(NULL), initialized_(false), world_model_(NULL) {}
 
 void RotateRecovery::initialize(std::string name, tf::TransformListener* tf,
     costmap_2d::Costmap2DROS* global_costmap, costmap_2d::Costmap2DROS* local_costmap){
@@ -99,13 +100,14 @@ void RotateRecovery::runBehavior(){
 
   double rotated_angle = 0.0;
   double prev_yaw = tf::getYaw(global_pose.getRotation());
+  const double dir = rotate_positive_ ? 1.0 : -1.0;
 
   while(n.ok()){
     local_costmap_->getRobotPose(global_pose);
 
     //update rotated distance
     const double current_yaw = tf::getYaw(global_pose.getRotation());
-    rotated_angle += angles::normalize_angle(current_yaw - prev_yaw);
+    rotated_angle += dir * angles::normalize_angle(current_yaw - prev_yaw);
     prev_yaw = current_yaw;
 
     //compute the distance left to rotate
@@ -116,7 +118,7 @@ void RotateRecovery::runBehavior(){
     //check if that velocity is legal by forward simulating
     double sim_angle = 0.0;
     while(sim_angle < dist_left){
-      const double theta = current_yaw + sim_angle;
+      const double theta = current_yaw + dir * sim_angle;
 
       //make sure that the point is legal, if it isn't... we'll abort
       double footprint_cost = world_model_->footprintCost(x, y, theta, local_costmap_->getRobotFootprint(), 0.0, 0.0);
@@ -137,7 +139,7 @@ void RotateRecovery::runBehavior(){
     geometry_msgs::Twist cmd_vel;
     cmd_vel.linear.x = 0.0;
     cmd_vel.linear.y = 0.0;
-    cmd_vel.angular.z = vel;
+    cmd_vel.angular.z = dir * vel;
 
     vel_pub.publish(cmd_vel);
 
