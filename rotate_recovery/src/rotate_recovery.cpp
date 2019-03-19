@@ -41,8 +41,8 @@
 PLUGINLIB_EXPORT_CLASS(rotate_recovery::RotateRecovery, nav_core::RecoveryBehavior)
 
 namespace rotate_recovery {
-RotateRecovery::RotateRecovery(): global_costmap_(NULL), local_costmap_(NULL), 
-  tf_(NULL), initialized_(false), world_model_(NULL) {} 
+RotateRecovery::RotateRecovery(): global_costmap_(NULL), local_costmap_(NULL),
+  tf_(NULL), initialized_(false), world_model_(NULL) {}
 
 void RotateRecovery::initialize(std::string name, tf::TransformListener* tf,
     costmap_2d::Costmap2DROS* global_costmap, costmap_2d::Costmap2DROS* local_costmap){
@@ -97,26 +97,26 @@ void RotateRecovery::runBehavior(){
   tf::Stamped<tf::Pose> global_pose;
   local_costmap_->getRobotPose(global_pose);
 
-  double current_angle = -1.0 * M_PI;
+  double rotated_angle = 0.0;
+  double prev_yaw = tf::getYaw(global_pose.getRotation());
 
-  bool got_180 = false;
-
-  double start_offset = 0 - angles::normalize_angle(tf::getYaw(global_pose.getRotation()));
   while(n.ok()){
     local_costmap_->getRobotPose(global_pose);
 
-    double norm_angle = angles::normalize_angle(tf::getYaw(global_pose.getRotation()));
-    current_angle = angles::normalize_angle(norm_angle + start_offset);
+    //update rotated distance
+    const double current_yaw = tf::getYaw(global_pose.getRotation());
+    rotated_angle += angles::normalize_angle(current_yaw - prev_yaw);
+    prev_yaw = current_yaw;
 
     //compute the distance left to rotate
-    double dist_left = M_PI - current_angle;
+    const double dist_left = 2 * M_PI - rotated_angle;
 
-    double x = global_pose.getOrigin().x(), y = global_pose.getOrigin().y();
+    const double x = global_pose.getOrigin().x(), y = global_pose.getOrigin().y();
 
     //check if that velocity is legal by forward simulating
     double sim_angle = 0.0;
     while(sim_angle < dist_left){
-      double theta = tf::getYaw(global_pose.getRotation()) + sim_angle;
+      const double theta = current_yaw + sim_angle;
 
       //make sure that the point is legal, if it isn't... we'll abort
       double footprint_cost = world_model_->footprintCost(x, y, theta, local_costmap_->getRobotFootprint(), 0.0, 0.0);
@@ -141,12 +141,8 @@ void RotateRecovery::runBehavior(){
 
     vel_pub.publish(cmd_vel);
 
-    //makes sure that we won't decide we're done right after we start
-    if(current_angle < 0.0)
-      got_180 = true;
-
     //if we're done with our in-place rotation... then return
-    if(got_180 && current_angle >= (0.0 - tolerance_))
+    if(rotated_angle >= 2 * M_PI - tolerance_)
       return;
 
     r.sleep();
