@@ -127,7 +127,7 @@ void RotateRecovery::runBehavior(){
       if(footprint_cost < 0.0){
         // only allow to rotate to the obstacle, minus some buffer
         dist_left = sim_angle - 2 * max_stopping_distance;
-        if (dist_left < 0) {
+        if (dist_left <= 0) {
           ROS_ERROR("Rotate recovery stops rotating in place because there is a potential collision. Cost: %.2f", footprint_cost);
           geometry_msgs::Twist cmd_vel;
           cmd_vel.linear.x = 0.0;
