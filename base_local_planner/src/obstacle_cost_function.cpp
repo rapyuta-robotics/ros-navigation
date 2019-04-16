@@ -94,7 +94,7 @@ double ObstacleCostFunction::scoreTrajectory(Trajectory &traj) {
     if(sum_scores_)
         cost +=  f_cost;
     else
-        cost = std::max(cost, f_cost);
+        cost = f_cost;
   }
   return cost;
 }
