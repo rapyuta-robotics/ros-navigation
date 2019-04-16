@@ -167,6 +167,7 @@ namespace dwa_local_planner {
     // set up all the cost functions that will be applied in order
     // (any function returning negative values will abort scoring, so the order can improve performance)
     std::vector<base_local_planner::TrajectoryCostFunction*> critics;
+    critics.push_back(&path_align_costs_);
     critics.push_back(&oscillation_costs_); // discards oscillating motions (assisgns cost -1)
     critics.push_back(&obstacle_costs_); // discards trajectories that move into obstacles
     critics.push_back(&goal_front_costs_); // prefers trajectories that make the nose go towards (local) nose goal
@@ -250,6 +251,8 @@ namespace dwa_local_planner {
     }
 
     obstacle_costs_.setFootprint(footprint_spec);
+
+    path_align_costs_.setTargetPoses(global_plan_);
 
     // costs for going away from path
     path_costs_.setTargetPoses(global_plan_);
