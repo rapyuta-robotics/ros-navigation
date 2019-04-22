@@ -13,8 +13,8 @@ AlignWithPathFunction::AlignWithPathFunction() : target_pose_valid_(false) {}
 void AlignWithPathFunction::setTargetPoses(std::vector<geometry_msgs::PoseStamped>& target_poses) {
   const int num_points = target_poses.size();
   if (num_points <= 0) {
-      target_pose_valid_ = false;
-      return;
+    target_pose_valid_ = false;
+    return;
   }
   target_pose_valid_ = true;
   // todo: decide which point to pick

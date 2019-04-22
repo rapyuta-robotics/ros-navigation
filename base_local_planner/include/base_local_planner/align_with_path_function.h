@@ -7,7 +7,7 @@ namespace base_local_planner {
 
 class AlignWithPathFunction : public base_local_planner::TrajectoryCostFunction {
 public:
-    AlignWithPathFunction();
+  AlignWithPathFunction();
 
   void setTargetPoses(std::vector<geometry_msgs::PoseStamped>& target_poses);
 
