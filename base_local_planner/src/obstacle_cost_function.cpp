@@ -81,10 +81,18 @@ double ObstacleCostFunction::scoreTrajectory(Trajectory &traj) {
     return -9;
   }
 
+  std::vector<geometry_msgs::Point> footprint_scaled = footprint_spec_;
+  if (scale != 1.0) {
+    for (unsigned int i = 0; i < footprint_scaled.size(); ++i) {
+      footprint_scaled[i].x *= scale;
+      footprint_scaled[i].y *= scale;
+    }
+  }
+
   for (unsigned int i = 0; i < traj.getPointsSize(); ++i) {
     traj.getPoint(i, px, py, pth);
     double f_cost = footprintCost(px, py, pth,
-        scale, footprint_spec_,
+        footprint_scaled,
         costmap_, world_model_);
 
     if(f_cost < 0){
@@ -117,8 +125,7 @@ double ObstacleCostFunction::footprintCost (
     const double& x,
     const double& y,
     const double& th,
-    double scale,
-    std::vector<geometry_msgs::Point> footprint_spec,
+    const std::vector<geometry_msgs::Point>& footprint_spec,
     costmap_2d::Costmap2D* costmap,
     base_local_planner::WorldModel* world_model) {
 
