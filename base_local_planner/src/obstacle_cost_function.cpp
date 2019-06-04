@@ -39,7 +39,6 @@
 #include <cmath>
 #include <Eigen/Core>
 #include <ros/console.h>
-#include <costmap_2d/cost_values.h>
 
 namespace base_local_planner {
 
@@ -130,12 +129,6 @@ double ObstacleCostFunction::footprintCost (
   if (footprint_cost < 0) {
     return -6.0;
   }
-
-  // hack to get robot away from obstacles
-  if (footprint_cost == costmap_2d::INSCRIBED_INFLATED_OBSTACLE) {
-      return 2 * footprint_cost;
-  }
-
   unsigned int cell_x, cell_y;
 
   //we won't allow trajectories that go off the map... shouldn't happen that often anyways
