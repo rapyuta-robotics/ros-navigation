@@ -70,7 +70,7 @@ public:
       const double& x,
       const double& y,
       const double& th,
-      const std::vector<geometry_msgs::Point>& footprint_spec,
+      const std::vector<geometry_msgs::Point>& scaled_footprint,
       costmap_2d::Costmap2D* costmap,
       base_local_planner::WorldModel* world_model);
 
