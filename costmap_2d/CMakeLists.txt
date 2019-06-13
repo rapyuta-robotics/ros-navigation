@@ -79,10 +79,6 @@ catkin_package(
         tf
         visualization_msgs
         voxel_grid
-    DEPENDS
-        PCL
-        EIGEN3
-        Boost
 )
 
 add_library(costmap_2d
