@@ -276,9 +276,9 @@ namespace dwa_local_planner {
     std::vector<geometry_msgs::PoseStamped> front_global_plan = global_plan_;
     double angle_to_goal = atan2(goal_pose.pose.position.y - pos[1], goal_pose.pose.position.x - pos[0]);
     front_global_plan.back().pose.position.x = front_global_plan.back().pose.position.x +
-      forward_point_distance_ * cos(angle_to_goal);
-    front_global_plan.back().pose.position.y = front_global_plan.back().pose.position.y + forward_point_distance_ *
-      sin(angle_to_goal);
+      abs(forward_point_distance_) * cos(angle_to_goal);
+    front_global_plan.back().pose.position.y = front_global_plan.back().pose.position.y +
+      abs(forward_point_distance_) * sin(angle_to_goal);
 
     goal_front_costs_.setTargetPoses(front_global_plan);
     
