@@ -110,8 +110,8 @@ void SimpleTrajectoryGenerator::initialise(
         max_vel[0] = max_vel_x;
       } else {
         // prevent fast accelerations while turning to reduce risk of slip
-        max_vel[0] = std::max(limits_->min_trans_vel,
-            vel[0] + std::max(0.0, acc_lim[0] * sim_period_ * (1.0 - 2.0 * std::fabs(vel[2]))));
+        max_vel[0] = std::min(max_vel_x, std::max(limits_->min_trans_vel,
+            vel[0] + std::max(0.0, acc_lim[0] * sim_period_ * (1.0 - 2.0 * std::fabs(vel[2])))));
       }
 
       max_vel[1] = std::min(max_vel_y, vel[1] + acc_lim[1] * sim_period_);
