@@ -38,6 +38,7 @@
 #include <base_local_planner/oscillation_cost_function.h>
 
 #include <cmath>
+#include <angles/angles.h>
 
 namespace base_local_planner {
 
@@ -72,7 +73,7 @@ void OscillationCostFunction::resetOscillationFlagsIfPossible(const Eigen::Vecto
   double y_diff = pos[1] - prev[1];
   double sq_dist = x_diff * x_diff + y_diff * y_diff;
 
-  double th_diff = pos[2] - prev[2];
+  double th_diff = angles::normalize_angle(pos[2] - prev[2]);
 
   //if we've moved far enough... we can reset our flags
   if (sq_dist > oscillation_reset_dist_ * oscillation_reset_dist_ ||
