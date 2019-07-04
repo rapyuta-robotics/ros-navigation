@@ -66,6 +66,10 @@ void OscillationCostFunction::updateOscillationFlags(Eigen::Vector3f pos, base_l
       resetOscillationFlagsIfPossible(pos, prev_stationary_pos_);
     }
   }
+  else {
+    resetOscillationFlags();
+    prev_stationary_pos_ = pos;
+  }
 }
 
 void OscillationCostFunction::resetOscillationFlagsIfPossible(const Eigen::Vector3f& pos, const Eigen::Vector3f& prev) {
