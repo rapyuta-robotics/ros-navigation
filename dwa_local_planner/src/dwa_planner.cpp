@@ -205,8 +205,18 @@ namespace dwa_local_planner {
     return true;
   }
 
+  inline bool is2DPoseEqual(const geometry_msgs::PoseStamped& a, const geometry_msgs::PoseStamped& b) {
+    return a.pose.position.x == b.pose.position.x && a.pose.position.y == b.pose.position.y &&
+        a.pose.orientation.z * (a.pose.orientation.w >= 0 ? 1 : -1) ==
+            b.pose.orientation.z * (b.pose.orientation.w >= 0 ? 1 : -1);
+  }
+
   bool DWAPlanner::setPlan(const std::vector<geometry_msgs::PoseStamped>& orig_global_plan) {
-    oscillation_costs_.resetOscillationFlags();
+    const std::vector<geometry_msgs::PoseStamped>& prevPlan = planner_util_->getGlobalPlan();
+    // conservatively reset oscillation flags: reset only for plan towards different goal
+    if (orig_global_plan.empty() || prevPlan.empty() || !is2DPoseEqual(prevPlan.back(), orig_global_plan.back())) {
+      oscillation_costs_.resetOscillationFlags();
+    }
     return planner_util_->setPlan(orig_global_plan);
   }
 
