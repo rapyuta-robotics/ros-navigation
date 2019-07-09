@@ -207,8 +207,7 @@ namespace dwa_local_planner {
 
   inline bool is2DPoseEqual(const geometry_msgs::PoseStamped& a, const geometry_msgs::PoseStamped& b) {
     return a.pose.position.x == b.pose.position.x && a.pose.position.y == b.pose.position.y &&
-        a.pose.orientation.z * (a.pose.orientation.w >= 0 ? 1 : -1) ==
-            b.pose.orientation.z * (b.pose.orientation.w >= 0 ? 1 : -1);
+        a.pose.orientation.z * b.pose.orientation.w == a.pose.orientation.w * b.pose.orientation.z;
   }
 
   bool DWAPlanner::setPlan(const std::vector<geometry_msgs::PoseStamped>& orig_global_plan) {
