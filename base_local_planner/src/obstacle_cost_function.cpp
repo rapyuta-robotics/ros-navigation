@@ -89,7 +89,10 @@ double ObstacleCostFunction::scoreTrajectory(Trajectory &traj) {
     }
   }
 
-  for (unsigned int i = 0; i < traj.getPointsSize(); ++i) {
+  const unsigned int point_size = traj.getPointsSize();
+  // ignore first trajectory point since it is the same for all trajectories,
+  // unless trajectory only contains one point
+  for (unsigned int i = point_size > 1 ? 1 : 0; i < point_size; ++i) {
     traj.getPoint(i, px, py, pth);
     double f_cost = footprintCost(px, py, pth,
         scaled_footprint,
