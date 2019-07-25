@@ -83,9 +83,15 @@ double ObstacleCostFunction::scoreTrajectory(Trajectory &traj) {
 
   std::vector<geometry_msgs::Point> scaled_footprint = footprint_spec_;
   if (scale != 1.0) {
+    scale -= 1.0; // convert to absolute offset
+    const bool fwd = traj.xv_ > 0;
     for (unsigned int i = 0; i < scaled_footprint.size(); ++i) {
-      scaled_footprint[i].x *= scale;
-      scaled_footprint[i].y *= scale;
+      if (fwd == (scaled_footprint[i].x > 0)) {
+          // assumes no sideward motion
+          scaled_footprint[i].x += copysign(scale * 4, scaled_footprint[i].x);
+          // assumes the widest part of the robot is not behind the footprint's origin
+          scaled_footprint[i].y += copysign(scale, scaled_footprint[i].y);
+      }
     }
   }
 
