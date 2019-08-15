@@ -80,6 +80,10 @@ namespace base_local_planner {
         ROS_DEBUG("Nearest waypoint to <%f, %f> is <%f, %f>\n", global_pose.getOrigin().x(), global_pose.getOrigin().y(), w.pose.position.x, w.pose.position.y);
         break;
       }
+      if (global_plan.size() == 1) {
+          ROS_ERROR_THROTTLE(1.0, "About to prune all points of the global_plan. Abort pruning.");
+          return;
+      }
       it = plan.erase(it);
       global_it = global_plan.erase(global_it);
     }
@@ -131,6 +135,11 @@ namespace base_local_planner {
           break;
         }
         ++i;
+      }
+
+      if (i == (unsigned int)global_plan.size()) {
+          ROS_ERROR("transforming global plan failed: All points of the global_plan are outside the local costmap.");
+          return false;
       }
 
       tf::Stamped<tf::Pose> tf_pose;
