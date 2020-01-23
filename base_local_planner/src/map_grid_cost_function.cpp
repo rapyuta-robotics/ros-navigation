@@ -52,15 +52,16 @@ MapGridCostFunction::MapGridCostFunction(costmap_2d::Costmap2D* costmap,
     is_local_goal_function_(is_local_goal_function),
     stop_on_failure_(true) {}
 
-void MapGridCostFunction::setTargetPoses(std::vector<geometry_msgs::PoseStamped> target_poses) {
+void MapGridCostFunction::setTargetPoses(std::vector<geometry_msgs::PoseStamped> target_poses, const geometry_msgs::PoseStamped& global_pose) {
   target_poses_ = target_poses;
+  global_pose_ = global_pose;
 }
 
 bool MapGridCostFunction::prepare() {
   map_.resetPathDist();
 
   if (is_local_goal_function_) {
-    map_.setLocalGoal(*costmap_, target_poses_);
+    map_.setLocalGoal(*costmap_, target_poses_, global_pose_);
   } else {
     map_.setTargetCells(*costmap_, target_poses_);
   }

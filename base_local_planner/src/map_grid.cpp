@@ -32,6 +32,8 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 #include <base_local_planner/map_grid.h>
+#include <tf2/utils.h>
+#include <angles/angles.h>
 #include <costmap_2d/cost_values.h>
 using namespace std;
 
@@ -208,18 +210,24 @@ namespace base_local_planner{
 
   //mark the point of the costmap as local goal where global_plan first leaves the area (or its last point)
   void MapGrid::setLocalGoal(const costmap_2d::Costmap2D& costmap,
-      const std::vector<geometry_msgs::PoseStamped>& global_plan) {
+      const std::vector<geometry_msgs::PoseStamped>& global_plan,
+      const geometry_msgs::PoseStamped& global_pose) {
     sizeCheck(costmap.getSizeInCellsX(), costmap.getSizeInCellsY());
 
     int local_goal_x = -1;
     int local_goal_y = -1;
     bool started_path = false;
 
+    const double forward_point_distance = 0.325; // forward point distance / some value larger than circumscribed radius
+    const double path_dist_threshold = 1.0;      // value significantly larger than yaw goal tolerance
+    const double path_yaw_threshold = 0.5;       // value significantly larger than circumscribed radius
+
     std::vector<geometry_msgs::PoseStamped> adjusted_global_plan;
     adjustPlanResolution(global_plan, adjusted_global_plan, costmap.getResolution());
 
+    unsigned int i = 0;
     // skip global path points until we reach the border of the local map
-    for (unsigned int i = 0; i < adjusted_global_plan.size(); ++i) {
+    for (; i < adjusted_global_plan.size(); ++i) {
       double g_x = adjusted_global_plan[i].pose.position.x;
       double g_y = adjusted_global_plan[i].pose.position.y;
       unsigned int map_x, map_y;
@@ -236,6 +244,35 @@ namespace base_local_planner{
     if (!started_path) {
       ROS_ERROR("None of the points of the global plan were in the local costmap, global plan points too far from robot");
       return;
+    }
+
+    const double robot_yaw = tf2::getYaw(global_pose.pose.orientation);
+    while (--i >= 0) {
+      const double g_x = adjusted_global_plan[i].pose.position.x;
+      const double g_y = adjusted_global_plan[i].pose.position.y;
+      unsigned int map_x, map_y;
+      if (costmap.worldToMap(g_x, g_y, map_x, map_y)) {
+        const auto cost = costmap.getCost(map_x, map_y);
+        if (cost != costmap_2d::NO_INFORMATION && cost != costmap_2d::INSCRIBED_INFLATED_OBSTACLE && cost != costmap_2d::LETHAL_OBSTACLE) {
+          local_goal_x = map_x;
+          local_goal_y = map_y;
+          break;
+        }
+        const double dx = g_x - global_pose.pose.position.x;
+        const double dy = g_y - global_pose.pose.position.y;
+        const double dist_sq = dx * dx + dy * dy;
+        if (dist_sq < forward_point_distance * forward_point_distance) {
+          break;
+        }
+
+        if (dx * dx + dy * dy < path_dist_threshold * path_dist_threshold) {
+          const double path_yaw = tf2::getYaw(adjusted_global_plan[i].pose.orientation);
+          const double yaw_diff = std::fabs(angles::normalize_angle(robot_yaw - path_yaw));
+          if (yaw_diff < path_yaw_threshold) {
+            break;
+          }
+        }
+      }
     }
 
     queue<MapCell*> path_dist_queue;

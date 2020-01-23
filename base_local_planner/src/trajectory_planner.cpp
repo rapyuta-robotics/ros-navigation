@@ -495,7 +495,7 @@ namespace base_local_planner{
 
       //make sure that we update our path based on the global plan and compute costs
       path_map_.setTargetCells(costmap_, global_plan_);
-      goal_map_.setLocalGoal(costmap_, global_plan_);
+      goal_map_.setLocalGoal(costmap_, global_plan_, geometry_msgs::PoseStamped{});
       ROS_DEBUG("Path/Goal distance computed");
     }
   }
@@ -929,7 +929,7 @@ namespace base_local_planner{
 
     //make sure that we update our path based on the global plan and compute costs
     path_map_.setTargetCells(costmap_, global_plan_);
-    goal_map_.setLocalGoal(costmap_, global_plan_);
+    goal_map_.setLocalGoal(costmap_, global_plan_, global_pose);
     ROS_DEBUG("Path/Goal distance computed");
 
     //rollout trajectories and find the minimum cost one

@@ -260,10 +260,10 @@ namespace dwa_local_planner {
     path_align_costs_.setTargetPoses(global_plan_);
 
     // costs for going away from path
-    path_costs_.setTargetPoses(global_plan_);
+    path_costs_.setTargetPoses(global_plan_, global_pose);
 
     // costs for not going towards the local goal as much as possible
-    goal_costs_.setTargetPoses(global_plan_);
+    goal_costs_.setTargetPoses(global_plan_, global_pose);
 
     // alignment costs
     geometry_msgs::PoseStamped goal_pose = global_plan_.back();
@@ -284,13 +284,13 @@ namespace dwa_local_planner {
         std::abs(forward_point_distance_) * cos(angle_to_goal);
     front_global_plan.back().pose.position.y = front_global_plan.back().pose.position.y + std::abs(forward_point_distance_) * sin(angle_to_goal);
 
-    goal_front_costs_.setTargetPoses(front_global_plan);
+    goal_front_costs_.setTargetPoses(front_global_plan, global_pose);
     
     // keeping the nose on the path
     if (sq_dist > forward_point_distance_ * forward_point_distance_ * cheat_factor_) {
       alignment_costs_.setScale(pdist_scale_);
       // costs for robot being aligned with path (nose on path, not ju
-      alignment_costs_.setTargetPoses(global_plan_);
+      alignment_costs_.setTargetPoses(global_plan_, global_pose);
     } else {
       // once we are close to goal, trying to keep the nose close to anything destabilizes behavior.
       alignment_costs_.setScale(0.0);
