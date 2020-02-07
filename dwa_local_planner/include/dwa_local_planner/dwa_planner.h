@@ -54,10 +54,10 @@
 #include <base_local_planner/local_planner_util.h>
 #include <base_local_planner/simple_trajectory_generator.h>
 
-#include <base_local_planner/align_with_path_function.h>
 #include <base_local_planner/oscillation_cost_function.h>
 #include <base_local_planner/map_grid_cost_function.h>
 #include <base_local_planner/obstacle_cost_function.h>
+#include <base_local_planner/prefer_forward_cost_function.h>
 #include <base_local_planner/twirling_cost_function.h>
 #include <base_local_planner/simple_scored_sampling_planner.h>
 
@@ -152,6 +152,7 @@ namespace dwa_local_planner {
       double stop_time_buffer_; ///< @brief How long before hitting something we're going to enforce that the robot stop
       double pdist_scale_, gdist_scale_, occdist_scale_;
       Eigen::Vector3f vsamples_;
+      std::vector<Eigen::Vector3f> turning_samples_;
 
       double sim_period_;///< @brief The number of seconds to use to compute max/min vels for dwa
       base_local_planner::Trajectory result_traj_;
@@ -172,7 +173,8 @@ namespace dwa_local_planner {
 
       // see constructor body for explanations
       base_local_planner::SimpleTrajectoryGenerator generator_;
-      base_local_planner::AlignWithPathFunction path_align_costs_;
+      base_local_planner::SimpleTrajectoryGenerator turn_generator_;
+      base_local_planner::PreferForwardCostFunction prefer_forward_costs_;
       base_local_planner::OscillationCostFunction oscillation_costs_;
       base_local_planner::ObstacleCostFunction obstacle_costs_;
       base_local_planner::MapGridCostFunction path_costs_;

@@ -61,6 +61,13 @@ namespace dwa_local_planner {
         config.use_dwa,
         sim_period_);
 
+    turn_generator_.setParameters(
+        M_PI / config.max_vel_theta,
+        config.sim_granularity,
+        config.angular_sim_granularity,
+        config.use_dwa,
+        sim_period_);
+
     double resolution = planner_util_->getCostmap()->getResolution();
     pdist_scale_ = resolution * config.path_distance_bias;
     // pdistscale used for both path and alignment, set  forward_point_distance to zero to discard alignment
@@ -84,6 +91,10 @@ namespace dwa_local_planner {
     obstacle_costs_.setParams(config.max_vel_trans, config.max_forward_inflation, config.max_sideward_inflation, config.scaling_speed);
 
     twirling_costs_.setScale(config.twirling_scale);
+
+    const double turn_around_reward = (config.path_distance_bias + 2 * config.goal_distance_bias) * 2 * forward_point_distance_;
+    const double backwards_cost_scale = (config.path_distance_bias + 2 * config.goal_distance_bias);
+    prefer_forward_costs_.setScale(1.5 * config.sim_time * backwards_cost_scale / std::max(0.01, turn_around_reward));
 
     int vx_samp, vy_samp, vth_samp;
     vx_samp = config.vx_samples;
@@ -112,7 +123,19 @@ namespace dwa_local_planner {
     vsamples_[1] = vy_samp;
     vsamples_[2] = vth_samp;
  
-
+    turning_samples_.clear();
+    if (vth_samp > 1) {
+      const float step_size = 2 * config.max_vel_theta / (vth_samp - 1);
+      float turning_vel = -config.max_vel_theta;
+      for (int i = 0; i < vth_samp; ++i) {
+        if (std::abs(turning_vel) > config.min_vel_theta) {
+          for (int j = 0; j <= 4; ++j) {
+            turning_samples_.push_back(Eigen::Vector3f(j * 0.5 * resolution * config.max_vel_theta, 0, turning_vel));
+          }
+        }
+        turning_vel += step_size;
+      }
+    }
   }
 
   DWAPlanner::DWAPlanner(std::string name, base_local_planner::LocalPlannerUtil *planner_util) :
@@ -164,7 +187,7 @@ namespace dwa_local_planner {
     // set up all the cost functions that will be applied in order
     // (any function returning negative values will abort scoring, so the order can improve performance)
     std::vector<base_local_planner::TrajectoryCostFunction*> critics;
-    critics.push_back(&path_align_costs_);
+    critics.push_back(&prefer_forward_costs_);
     critics.push_back(&oscillation_costs_); // discards oscillating motions (assisgns cost -1)
     critics.push_back(&obstacle_costs_); // discards trajectories that move into obstacles
     critics.push_back(&goal_front_costs_); // prefers trajectories that make the nose go towards (local) nose goal
@@ -175,6 +198,7 @@ namespace dwa_local_planner {
 
     // trajectory generators
     std::vector<base_local_planner::TrajectorySampleGenerator*> generator_list;
+    generator_list.push_back(&turn_generator_);
     generator_list.push_back(&generator_);
 
     scored_sampling_planner_ = base_local_planner::SimpleScoredSamplingPlanner(generator_list, critics);
@@ -257,8 +281,6 @@ namespace dwa_local_planner {
 
     obstacle_costs_.setFootprint(footprint_spec);
 
-    path_align_costs_.setTargetPoses(global_plan_);
-
     // costs for going away from path
     path_costs_.setTargetPoses(global_plan_);
 
@@ -321,6 +343,13 @@ namespace dwa_local_planner {
         goal,
         &limits,
         vsamples_);
+
+    turn_generator_.initialise(pos,
+        vel,
+        goal,
+        &limits,
+        Eigen::Vector3f::Zero(),
+        turning_samples_);
 
     result_traj_.cost_ = -7;
     // find best trajectory by sampling and scoring the samples
