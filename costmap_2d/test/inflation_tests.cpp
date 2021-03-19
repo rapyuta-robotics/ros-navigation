@@ -79,9 +79,9 @@ void validatePointInflation(unsigned int mx, unsigned int my, Costmap2D* costmap
   m[0].push_back(initial);
   for (std::map<double, std::vector<CellData> >::iterator bin = m.begin(); bin != m.end(); ++bin)
   {
-    for (int i = 0; i < bin->second.size(); ++i)
+    for (unsigned int i = 0; i < bin->second.size(); ++i)
     {
-      const CellData& cell = bin->second[i];
+      const CellData cell = bin->second[i];
       if (!seen[cell.index_])
       {
         seen[cell.index_] = true;
@@ -95,6 +95,10 @@ void validatePointInflation(unsigned int mx, unsigned int my, Costmap2D* costmap
         if (dist > inflation_radius)
         {
           continue;
+        }
+
+        if (dist == bin->first) {
+          dist += 0.001;
         }
 
         if (cell.x_ > 0)

@@ -203,15 +203,15 @@ void InflationLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, 
   // box min_i...max_j, by the amount cell_inflation_radius_.  Cells
   // up to that distance outside the box can still influence the costs
   // stored in cells inside the box.
-  min_i -= cell_inflation_radius_;
-  min_j -= cell_inflation_radius_;
-  max_i += cell_inflation_radius_;
-  max_j += cell_inflation_radius_;
+  min_i -= static_cast<int>(cell_inflation_radius_);
+  min_j -= static_cast<int>(cell_inflation_radius_);
+  max_i += static_cast<int>(cell_inflation_radius_);
+  max_j += static_cast<int>(cell_inflation_radius_);
 
   min_i = std::max(0, min_i);
   min_j = std::max(0, min_j);
-  max_i = std::min(int(size_x), max_i);
-  max_j = std::min(int(size_y), max_j);
+  max_i = std::min(static_cast<int>(size_x), max_i);
+  max_j = std::min(static_cast<int>(size_y), max_j);
 
   // Inflation list; we append cells to visit in a list associated with its distance to the nearest obstacle
   // We use a map<distance, list> to emulate the priority queue used before, with a notable performance boost
@@ -221,7 +221,7 @@ void InflationLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, 
   {
     for (int i = min_i; i < max_i; i++)
     {
-      int index = master_grid.getIndex(i, j);
+      int index = static_cast<int>(master_grid.getIndex(i, j));
       unsigned char cost = master_array[index];
       if (cost == LETHAL_OBSTACLE)
       {
@@ -232,12 +232,12 @@ void InflationLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, 
 
   // Process cells by increasing distance; new cells are appended to the corresponding distance bin, so they
   // can overtake previously inserted but farther away cells
-  for (const auto& dist_bin: inflation_cells_)
+  for (const auto& dist_bin : inflation_cells_)
   {
-    for (const auto& current_cell: dist_bin)
+    for (std::size_t i = 0; i < dist_bin.size(); ++i)
     {
       // process all cells at distance dist_bin.first
-      unsigned int index = current_cell.index_;
+      unsigned int index = dist_bin[i].index_;
 
       // ignore if already visited
       if (seen_[index])
@@ -247,10 +247,10 @@ void InflationLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, 
 
       seen_[index] = true;
 
-      unsigned int mx = current_cell.x_;
-      unsigned int my = current_cell.y_;
-      unsigned int sx = current_cell.src_x_;
-      unsigned int sy = current_cell.src_y_;
+      unsigned int mx = dist_bin[i].x_;
+      unsigned int my = dist_bin[i].y_;
+      unsigned int sx = dist_bin[i].src_x_;
+      unsigned int sy = dist_bin[i].src_y_;
 
       // assign the cost associated with the distance from an obstacle to the cell
       unsigned char cost = costLookup(mx, my, sx, sy);
