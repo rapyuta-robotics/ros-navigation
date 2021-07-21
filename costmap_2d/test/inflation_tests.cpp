@@ -97,7 +97,10 @@ void validatePointInflation(unsigned int mx, unsigned int my, Costmap2D* costmap
           continue;
         }
 
-        if (dist == bin->first) {
+        if (dist == bin->first)
+        {
+          // Adding to our current bin could cause a reallocation
+          // Which appears to cause the iterator to get messed up
           dist += 0.001;
         }
 
