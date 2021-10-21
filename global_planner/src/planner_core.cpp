@@ -313,6 +313,7 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
     }
 
     // add orientations if needed
+
     orientation_filter_->processPath(start, plan);
 
     //publish the plan for visualization purposes

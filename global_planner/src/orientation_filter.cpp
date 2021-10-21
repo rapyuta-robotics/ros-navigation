@@ -35,12 +35,26 @@
  * Author: David V. Lu!!
  *********************************************************************/
 #include <global_planner/orientation_filter.h>
+#include <tf/tf.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/utils.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <angles/angles.h>
 
 namespace global_planner {
+
+/**
+ * Minimum angle between pose orientations. Assumes both poses are in the same reference frame.
+ * @param a pose a
+ * @param b pose b
+ * @return minimum angle
+ */
+double min_angle(const geometry_msgs::PoseStamped& a, const geometry_msgs::PoseStamped& b)
+{
+    tf::Quaternion qa(a.pose.orientation.x, a.pose.orientation.y, a.pose.orientation.z, a.pose.orientation.w);
+    tf::Quaternion qb(b.pose.orientation.x, b.pose.orientation.y, b.pose.orientation.z, b.pose.orientation.w);
+    return tf::angleShortestPath(qa, qb);
+}
 
 void set_angle(geometry_msgs::PoseStamped* pose, double angle)
 {
@@ -65,6 +79,24 @@ void OrientationFilter::processPath(const geometry_msgs::PoseStamped& start,
                 setAngleBasedOnPositionDerivative(path, i);
                 set_angle(&path[i], angles::normalize_angle(tf2::getYaw(path[i].pose.orientation) + M_PI));
             }
+            break;
+        case BIDIRECTIONAL:
+            for(int i=0;i<n-1;i++){
+                setAngleBasedOnPositionDerivative(path, i);
+            }
+            if (n > 2){
+                double start_to_path_theta = min_angle(start, *std::next(path.begin(), std::min(2, n / 2)));
+                double path_to_goal_theta = min_angle(*std::prev(path.end(), std::min(3, (n / 2) + 1)), path.back());
+                bool prefer_backward = std::abs(start_to_path_theta) + std::abs(path_to_goal_theta) > M_PI;
+                ROS_INFO_STREAM("start_to_path: " << start_to_path_theta);
+                ROS_INFO_STREAM("path_to_goal:  " << path_to_goal_theta);
+                ROS_INFO_STREAM("prefer_backward ?   " << prefer_backward);
+                if (prefer_backward){
+                    for(int i=0;i<n-1;i++){
+                        set_angle(&path[i], angles::normalize_angle(tf2::getYaw(path[i].pose.orientation) + M_PI));
+                    }
+                }
+            } else ROS_INFO_STREAM(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> path too short ");
             break;
         case LEFTWARD:
             for(int i=0;i<n-1;i++){
