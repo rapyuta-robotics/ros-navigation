@@ -88,15 +88,12 @@ void OrientationFilter::processPath(const geometry_msgs::PoseStamped& start,
                 double start_to_path_theta = min_angle(start, *std::next(path.begin(), std::min(2, n / 2)));
                 double path_to_goal_theta = min_angle(*std::prev(path.end(), std::min(3, (n / 2) + 1)), path.back());
                 bool prefer_backward = std::abs(start_to_path_theta) + std::abs(path_to_goal_theta) > M_PI;
-                ROS_INFO_STREAM("start_to_path: " << start_to_path_theta);
-                ROS_INFO_STREAM("path_to_goal:  " << path_to_goal_theta);
-                ROS_INFO_STREAM("prefer_backward ?   " << prefer_backward);
                 if (prefer_backward){
                     for(int i=0;i<n-1;i++){
                         set_angle(&path[i], angles::normalize_angle(tf2::getYaw(path[i].pose.orientation) + M_PI));
                     }
                 }
-            } else ROS_INFO_STREAM(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> path too short ");
+            }
             break;
         case LEFTWARD:
             for(int i=0;i<n-1;i++){
