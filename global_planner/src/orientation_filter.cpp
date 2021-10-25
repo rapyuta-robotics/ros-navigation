@@ -35,7 +35,6 @@
  * Author: David V. Lu!!
  *********************************************************************/
 #include <global_planner/orientation_filter.h>
-#include <tf/tf.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/utils.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
@@ -51,9 +50,7 @@ namespace global_planner {
  */
 double min_angle(const geometry_msgs::PoseStamped& a, const geometry_msgs::PoseStamped& b)
 {
-    tf::Quaternion qa(a.pose.orientation.x, a.pose.orientation.y, a.pose.orientation.z, a.pose.orientation.w);
-    tf::Quaternion qb(b.pose.orientation.x, b.pose.orientation.y, b.pose.orientation.z, b.pose.orientation.w);
-    return tf::angleShortestPath(qa, qb);
+    return angles::shortest_angular_distance(tf2::getYaw(a.pose.orientation), tf2::getYaw(b.pose.orientation));
 }
 
 void set_angle(geometry_msgs::PoseStamped* pose, double angle)
@@ -85,6 +82,10 @@ void OrientationFilter::processPath(const geometry_msgs::PoseStamped& start,
                 setAngleBasedOnPositionDerivative(path, i);
             }
             if (n > 2){
+                // Note that we take 2nd first and last poses instead of front and back, as the cell-connecting paths
+                // make first and last poses angles unreliable
+                // This is because the first pose (robot pose) will point to the closest cell's center, and the pre-last
+                // pose (also a cell center) will point to the goal pose
                 double start_to_path_theta = min_angle(start, *std::next(path.begin(), std::min(2, n / 2)));
                 double path_to_goal_theta = min_angle(*std::prev(path.end(), std::min(3, (n / 2) + 1)), path.back());
                 bool prefer_backward = std::abs(start_to_path_theta) + std::abs(path_to_goal_theta) > M_PI;
