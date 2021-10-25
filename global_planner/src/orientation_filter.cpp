@@ -82,7 +82,7 @@ void OrientationFilter::processPath(const geometry_msgs::PoseStamped& start,
                 setAngleBasedOnPositionDerivative(path, i);
             }
             if (n > 2){
-                // For paths with four poses or more, we take 2nd first and last poses instead of front and back,
+                // For paths with five poses or more, we take 2nd first and last poses instead of front and back,
                 // as the cell-connecting paths make first and last poses angles unreliable
                 // This is because the first pose (robot pose) will point to the closest cell's center, and the
                 // pre-last pose (also a cell center) will point to the goal pose
