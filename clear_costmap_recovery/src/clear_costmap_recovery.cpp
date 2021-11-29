@@ -62,6 +62,7 @@ void ClearCostmapRecovery::initialize(std::string name, tf2_ros::Buffer* tf,
     private_nh.param("reset_distance", reset_distance_, 3.0);
     private_nh.param("invert_area_to_clear", invert_area_to_clear_, false);
     private_nh.param("force_updating", force_updating_, false);
+    private_nh.param("reset_layers", reset_layers_, false);
     private_nh.param("affected_maps", affected_maps_, std::string("both"));
     if (affected_maps_ != "local" && affected_maps_ != "global" && affected_maps_ != "both")
     {
@@ -97,7 +98,9 @@ void ClearCostmapRecovery::runBehavior(){
     return;
   }
 
-  if (!invert_area_to_clear_){
+  if (reset_layers_) {
+    ROS_WARN("Resetting %s costmap%s.", affected_maps_.c_str(), affected_maps_ == "both" ? "s" : "");
+  }else if (!invert_area_to_clear_){
     ROS_WARN("Clearing %s costmap%s outside a square (%.2fm) large centered on the robot.", affected_maps_.c_str(),
            affected_maps_ == "both" ? "s" : "", reset_distance_);
   }else {
@@ -108,24 +111,37 @@ void ClearCostmapRecovery::runBehavior(){
   ros::WallTime t0 = ros::WallTime::now();
   if (affected_maps_ == "global" || affected_maps_ == "both")
   {
-    clear(global_costmap_);
+    if (reset_layers_)
+      reset(global_costmap_);
+    else
+      clear(global_costmap_);
 
     if (force_updating_)
       global_costmap_->updateMap();
 
+    ROS_ERROR("Global costmap cleared in %fs", (ros::WallTime::now() - t0).toSec());
     ROS_DEBUG("Global costmap cleared in %fs", (ros::WallTime::now() - t0).toSec());
   }
 
   t0 = ros::WallTime::now();
   if (affected_maps_ == "local" || affected_maps_ == "both")
   {
-    clear(local_costmap_);
+    if (reset_layers_)
+      reset(local_costmap_);
+    else
+      clear(local_costmap_);
 
     if (force_updating_)
       local_costmap_->updateMap();
 
+    ROS_ERROR("Local costmap cleared in %fs", (ros::WallTime::now() - t0).toSec());
     ROS_DEBUG("Local costmap cleared in %fs", (ros::WallTime::now() - t0).toSec());
   }
+}
+
+void ClearCostmapRecovery::reset(costmap_2d::Costmap2DROS* costmap){
+  boost::unique_lock<costmap_2d::Costmap2D::mutex_t> lock(*(costmap->getCostmap()->getMutex()));
+  costmap->resetLayers();
 }
 
 void ClearCostmapRecovery::clear(costmap_2d::Costmap2DROS* costmap){

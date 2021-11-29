@@ -72,12 +72,14 @@ namespace clear_costmap_recovery{
       void runBehavior();
 
     private:
+      void reset(costmap_2d::Costmap2DROS* costmap);
       void clear(costmap_2d::Costmap2DROS* costmap);
       void clearMap(boost::shared_ptr<costmap_2d::CostmapLayer> costmap, double pose_x, double pose_y);
       costmap_2d::Costmap2DROS* global_costmap_, *local_costmap_;
       std::string name_;
       tf2_ros::Buffer* tf_;
       bool initialized_;
+      bool reset_layers_; ///< fast version that just resets all layers for the affected costmaps
       bool force_updating_; ///< force costmap update after clearing, so we don't need to wait for update thread
       double reset_distance_;
       bool invert_area_to_clear_;
