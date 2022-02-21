@@ -77,10 +77,10 @@ void SimpleTrajectoryGenerator::initialise(
   next_sample_index_ = 0;
   sample_params_.clear();
 
-  double min_vel_x = limits->min_vel_x;
-  double max_vel_x = limits->max_vel_x;
-  double min_vel_y = limits->min_vel_y;
-  double max_vel_y = limits->max_vel_y;
+  double min_vel_x = std::max(-limits->max_vel_trans, std::min(limits->min_vel_x, limits->max_vel_trans));
+  double max_vel_x = std::max(-limits->max_vel_trans, std::min(limits->max_vel_x, limits->max_vel_trans));
+  double min_vel_y = std::max(-limits->max_vel_trans, std::min(limits->min_vel_y, limits->max_vel_trans));
+  double max_vel_y = std::max(-limits->max_vel_trans, std::min(limits->max_vel_y, limits->max_vel_trans));
 
   // if sampling number is zero in any dimension, we don't generate samples generically
   if (vsamples[0] * vsamples[1] * vsamples[2] > 0) {
