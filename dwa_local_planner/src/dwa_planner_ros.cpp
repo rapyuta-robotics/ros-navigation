@@ -45,6 +45,7 @@
 
 #include <base_local_planner/goal_functions.h>
 #include <nav_msgs/Path.h>
+#include <visualization_msgs/Marker.h>
 #include <tf2/utils.h>
 
 #include <nav_core/parameter_magic.h>
@@ -105,7 +106,7 @@ namespace dwa_local_planner {
       ros::NodeHandle private_nh("~/" + name);
       g_plan_pub_ = private_nh.advertise<nav_msgs::Path>("global_plan", 1);
       l_plan_pub_ = private_nh.advertise<nav_msgs::Path>("local_plan", 1);
-      scaled_fp_pub_ = private_nh.advertise<geometry_msgs::PolygonStamped>("scaled_footprint", 1);
+      scaled_fp_pub_ = private_nh.advertise<visualization_msgs::Marker>("scaled_footprint", 1);
       tf_ = tf;
       costmap_ros_ = costmap_ros;
       costmap_ros_->getRobotPose(current_pose_);
@@ -190,11 +191,17 @@ namespace dwa_local_planner {
   }
 
   void DWAPlannerROS::publishScaledFootprint(geometry_msgs::PoseStamped pose, base_local_planner::Trajectory &traj) {
-    geometry_msgs::PolygonStamped footprint;
-    footprint.header.frame_id = pose.header.frame_id;
-    footprint.header.stamp = ros::Time::now();
-    costmap_2d::transformFootprint(pose.pose.position.x, pose.pose.position.y, tf2::getYaw(pose.pose.orientation), dp_->getScaledFootprint(traj), footprint);
-    scaled_fp_pub_.publish(footprint);
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = pose.header.frame_id;
+    marker.header.stamp = ros::Time::now();
+    marker.lifetime = ros::Duration(2 * dp_->getSimPeriod()); // double sim period to avoid flickering
+    marker.type = visualization_msgs::Marker::LINE_STRIP;
+    marker.pose = pose.pose;
+    marker.scale.x = 0.01;
+    marker.color.g = marker.color.a = 1.0;
+    marker.points = dp_->getScaledFootprint(traj);
+    marker.points.push_back(marker.points.front()); // close the polygon
+    scaled_fp_pub_.publish(marker);
   }
 
   DWAPlannerROS::~DWAPlannerROS(){
