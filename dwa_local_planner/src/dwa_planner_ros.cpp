@@ -105,6 +105,7 @@ namespace dwa_local_planner {
       ros::NodeHandle private_nh("~/" + name);
       g_plan_pub_ = private_nh.advertise<nav_msgs::Path>("global_plan", 1);
       l_plan_pub_ = private_nh.advertise<nav_msgs::Path>("local_plan", 1);
+      scaled_fp_pub_ = private_nh.advertise<geometry_msgs::PolygonStamped>("scaled_footprint", 1);
       tf_ = tf;
       costmap_ros_ = costmap_ros;
       costmap_ros_->getRobotPose(current_pose_);
@@ -121,7 +122,7 @@ namespace dwa_local_planner {
       {
         odom_helper_.setOdomTopic( odom_topic_ );
       }
-      
+
       initialized_ = true;
 
       // Warn about deprecated parameters -- remove this block in N-turtle
@@ -140,7 +141,7 @@ namespace dwa_local_planner {
       ROS_WARN("This planner has already been initialized, doing nothing.");
     }
   }
-  
+
   bool DWAPlannerROS::setPlan(const std::vector<geometry_msgs::PoseStamped>& orig_global_plan) {
     if (! isInitialized()) {
       ROS_ERROR("This planner has not been initialized, please call initialize() before using this planner");
@@ -188,6 +189,14 @@ namespace dwa_local_planner {
     base_local_planner::publishPlan(path, g_plan_pub_);
   }
 
+  void DWAPlannerROS::publishScaledFootprint(geometry_msgs::PoseStamped pose, base_local_planner::Trajectory &traj) {
+    geometry_msgs::PolygonStamped footprint;
+    footprint.header.frame_id = pose.header.frame_id;
+    footprint.header.stamp = ros::Time::now();
+    costmap_2d::transformFootprint(pose.pose.position.x, pose.pose.position.y, tf2::getYaw(pose.pose.orientation), dp_->getScaledFootprint(traj), footprint);
+    scaled_fp_pub_.publish(footprint);
+  }
+
   DWAPlannerROS::~DWAPlannerROS(){
     //make sure to clean things up
     delete dsrv_;
@@ -216,7 +225,7 @@ namespace dwa_local_planner {
     //compute what trajectory to drive along
     geometry_msgs::PoseStamped drive_cmds;
     drive_cmds.header.frame_id = costmap_ros_->getBaseFrameID();
-    
+
     // call with updated footprint
     base_local_planner::Trajectory path = dp_->findBestPath(global_pose, robot_vel, drive_cmds);
     //ROS_ERROR("Best: %.2f, %.2f, %.2f, %.2f", path.xv_, path.yv_, path.thetav_, path.cost_);
@@ -244,7 +253,7 @@ namespace dwa_local_planner {
       return mbf_msgs::ExePathResult::NO_VALID_CMD;
     }
 
-    ROS_DEBUG_NAMED("dwa_local_planner", "A valid velocity command of (%.2f, %.2f, %.2f) was found for this cycle.", 
+    ROS_DEBUG_NAMED("dwa_local_planner", "A valid velocity command of (%.2f, %.2f, %.2f) was found for this cycle.",
                     cmd_vel.twist.linear.x, cmd_vel.twist.linear.y, cmd_vel.twist.angular.z);
     cmd_vel.header.stamp = ros::Time::now();
 
@@ -266,7 +275,7 @@ namespace dwa_local_planner {
     }
 
     //publish information to the visualizer
-
+    publishScaledFootprint(global_pose, path);
     publishLocalPlan(local_plan);
     return mbf_msgs::ExePathResult::SUCCESS;
   }

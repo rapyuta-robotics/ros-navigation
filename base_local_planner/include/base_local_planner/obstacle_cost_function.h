@@ -63,6 +63,7 @@ public:
 
   void setParams(double max_trans_vel, double max_forward_inflation, double max_sideward_inflation, double scaling_speed);
   void setFootprint(std::vector<geometry_msgs::Point> footprint_spec);
+  std::vector<geometry_msgs::Point> getScaledFootprint(Trajectory& traj);
 
   // helper functions, made static for easy unit testing
   static double getScalingFactor(Trajectory &traj, double scaling_speed, double max_trans_vel);
