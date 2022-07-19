@@ -194,11 +194,11 @@ namespace dwa_local_planner {
     visualization_msgs::Marker marker;
     marker.header.frame_id = pose.header.frame_id;
     marker.header.stamp = ros::Time::now();
-    marker.lifetime = ros::Duration(2 * dp_->getSimPeriod()); // double sim period to avoid flickering
+    marker.lifetime = ros::Duration(2 * dp_->getSimPeriod()); // double the sim period to avoid flickering
     marker.type = visualization_msgs::Marker::LINE_STRIP;
     marker.pose = pose.pose;
     marker.scale.x = 0.01;
-    marker.color.g = marker.color.a = 1.0;
+    marker.color.g = marker.color.a = 1.0; // green
     marker.points = dp_->getScaledFootprint(traj);
     marker.points.push_back(marker.points.front()); // close the polygon
     scaled_fp_pub_.publish(marker);
