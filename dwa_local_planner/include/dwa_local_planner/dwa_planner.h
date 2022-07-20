@@ -151,7 +151,7 @@ namespace dwa_local_planner {
        * @param traj Trajectory to evaluate
        * @return Scaled footprint
        */
-      std::vector<geometry_msgs::Point> getScaledFootprint(base_local_planner::Trajectory &traj);
+      std::vector<geometry_msgs::Point> getScaledFootprint(const base_local_planner::Trajectory &traj) const;
 
     private:
 

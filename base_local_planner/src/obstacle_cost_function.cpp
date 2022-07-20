@@ -68,7 +68,7 @@ void ObstacleCostFunction::setFootprint(std::vector<geometry_msgs::Point> footpr
   footprint_spec_ = footprint_spec;
 }
 
-std::vector<geometry_msgs::Point> ObstacleCostFunction::getScaledFootprint(Trajectory& traj) {
+std::vector<geometry_msgs::Point> ObstacleCostFunction::getScaledFootprint(const Trajectory& traj) const {
   std::vector<geometry_msgs::Point> scaled_footprint = footprint_spec_;
   const double scale = getScalingFactor(traj, scaling_speed_, max_trans_vel_);
   if (scale != 0.0) {
@@ -123,7 +123,7 @@ double ObstacleCostFunction::scoreTrajectory(Trajectory &traj) {
   return cost;
 }
 
-double ObstacleCostFunction::getScalingFactor(Trajectory &traj, double scaling_speed, double max_trans_vel) {
+double ObstacleCostFunction::getScalingFactor(const Trajectory &traj, double scaling_speed, double max_trans_vel) {
   double vmag = hypot(traj.xv_, traj.yv_);
 
   //if we're over a certain speed threshold, we'll scale the robot's

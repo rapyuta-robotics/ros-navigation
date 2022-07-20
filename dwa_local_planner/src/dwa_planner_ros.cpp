@@ -190,7 +190,7 @@ namespace dwa_local_planner {
     base_local_planner::publishPlan(path, g_plan_pub_);
   }
 
-  void DWAPlannerROS::publishScaledFootprint(geometry_msgs::PoseStamped pose, base_local_planner::Trajectory &traj) {
+  void DWAPlannerROS::publishScaledFootprint(const geometry_msgs::PoseStamped& pose, const base_local_planner::Trajectory &traj) const {
     visualization_msgs::Marker marker;
     marker.header.frame_id = pose.header.frame_id;
     marker.header.stamp = ros::Time::now();

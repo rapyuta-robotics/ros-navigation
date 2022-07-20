@@ -219,7 +219,7 @@ namespace dwa_local_planner {
     return planner_util_->setPlan(orig_global_plan);
   }
 
-  std::vector<geometry_msgs::Point> DWAPlanner::getScaledFootprint(base_local_planner::Trajectory &traj) {
+  std::vector<geometry_msgs::Point> DWAPlanner::getScaledFootprint(const base_local_planner::Trajectory &traj) const {
     return obstacle_costs_.getScaledFootprint(traj);
   }
 
