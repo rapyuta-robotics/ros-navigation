@@ -58,6 +58,14 @@ void calculateMinAndMaxDistances(const std::vector<geometry_msgs::Point>& footpr
                                  double& min_dist, double& max_dist);
 
 /**
+ * @brief Calculate the orientation at which the footprint will sweep the smallest area when moving along +x direction
+
+ * @param footprint The footprint to examine
+ * @return Minimum footprint sweeping area orientation
+ */
+double minSweepingAreaOrientation(const std::vector<geometry_msgs::Point>& footprint);
+
+/**
  * @brief Convert Point32 to Point
  */
 geometry_msgs::Point              toPoint(geometry_msgs::Point32 pt);

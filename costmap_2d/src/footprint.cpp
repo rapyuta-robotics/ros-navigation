@@ -66,6 +66,39 @@ void calculateMinAndMaxDistances(const std::vector<geometry_msgs::Point>& footpr
   max_dist = std::max(max_dist, std::max(vertex_dist, edge_dist));
 }
 
+double minSweepingAreaOrientation(const std::vector<geometry_msgs::Point>& footprint)
+{
+  double min_dist = std::numeric_limits<double>::max();
+  std::vector<geometry_msgs::Point> closest_edge;
+
+  if (footprint.size() <= 2)
+  {
+    return NAN;
+  }
+
+  // check the distance from the robot center point to each footprint edged and keep the closest one
+  for (unsigned int i = 0; i < footprint.size() - 1; ++i)
+  {
+    double edge_dist = distanceToLine(0, 0, footprint[i].x, footprint[i].y, footprint[i + 1].x, footprint[i + 1].y);
+    if (edge_dist < min_dist)
+    {
+      min_dist = edge_dist;
+      closest_edge = { footprint[i], footprint[i + 1] };
+    }
+  }
+
+  // we also need to do the last vertex and the first vertex
+  if (distanceToLine(0, 0, footprint.back().x, footprint.back().y, footprint.front().x, footprint.front().y) < min_dist)
+  {
+    closest_edge = { footprint.back(), footprint.front() };
+  }
+
+  // return the orientation of the closest edge, directed from back to front (+x axis direction)
+  std::sort(closest_edge.begin(), closest_edge.end(),
+            [](const geometry_msgs::Point& p1, const geometry_msgs::Point& p2) { return p1.x < p2.x; });
+  return orientation(closest_edge.front().x, closest_edge.front().y, closest_edge.back().x, closest_edge.back().y);
+}
+
 geometry_msgs::Point32 toPoint32(geometry_msgs::Point pt)
 {
   geometry_msgs::Point32 point32;
