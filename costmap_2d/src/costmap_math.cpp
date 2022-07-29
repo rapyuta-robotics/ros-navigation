@@ -87,3 +87,10 @@ bool intersects(std::vector<geometry_msgs::Point>& polygon1, std::vector<geometr
 {
   return intersects_helper(polygon1, polygon2) || intersects_helper(polygon2, polygon1);
 }
+
+double orientation(double x0, double y0, double x1, double y1)
+{
+  const double dx = x1 - x0;
+  const double dy = y1 - y0;
+  return atan2(dy, dx);
+}
