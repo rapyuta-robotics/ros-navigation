@@ -69,7 +69,7 @@ void calculateMinAndMaxDistances(const std::vector<geometry_msgs::Point>& footpr
 double minSweepingAreaOrientation(const std::vector<geometry_msgs::Point>& footprint)
 {
   double min_dist = std::numeric_limits<double>::max();
-  std::vector<geometry_msgs::Point> closest_edge;
+  std::array<geometry_msgs::Point, 2> closest_edge;
 
   if (footprint.size() <= 2)
   {

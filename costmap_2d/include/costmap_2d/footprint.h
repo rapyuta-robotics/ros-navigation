@@ -59,7 +59,9 @@ void calculateMinAndMaxDistances(const std::vector<geometry_msgs::Point>& footpr
 
 /**
  * @brief Calculate the orientation at which the footprint will sweep the smallest area when moving along +x direction
-
+ * @warning This function only works under two assumptions:
+ *          * the footprint is symmetric wrt the x axis
+ *          * the closest edge is approximately parallel to either x or y axis
  * @param footprint The footprint to examine
  * @return Minimum footprint sweeping area orientation
  */
