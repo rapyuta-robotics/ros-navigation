@@ -85,6 +85,8 @@ namespace dwa_local_planner {
 
     twirling_costs_.setScale(config.twirling_scale);
 
+    path_align_costs_.setMaxVelTheta(config.max_vel_theta);
+
     backwardvel_scale_ = 1.2 * config.sim_time * (config.path_distance_bias + config.goal_distance_bias);
     prefer_forward_costs_.setScale(backwardvel_scale_);
 
@@ -325,7 +327,7 @@ namespace dwa_local_planner {
     goal_front_costs_.setTargetPoses(front_global_plan);
 
     constexpr double MIN_GOAL_DIST_SQ = 0.7;
-    if (sq_dist > MIN_GOAL_DIST_SQ && path_align_costs_.isTurningRequired()) {
+    if (sq_dist > MIN_GOAL_DIST_SQ) {
       // enable turning penalty
       path_align_costs_.setScale(1.0);
       // disable goal cost during turning because turning won't move the robot closer to the goal
