@@ -53,6 +53,10 @@
 
 namespace base_local_planner {
 
+  // TODO docs
+  // Compute the direction of a point from the normal passing through the goal
+  int direction(const geometry_msgs::PoseStamped& global_pose, std::vector<geometry_msgs::PoseStamped>& global_plan);
+
   /**
    * @brief  return squared distance to check if the goal position has been achieved
    * @param  global_pose The pose of the robot in the global frame
@@ -146,7 +150,7 @@ namespace base_local_planner {
    * @param trans_stopped_velocity The translational velocity below which the robot is considered stopped
    * @return True if the robot is stopped, false otherwise
    */
-  bool stopped(const nav_msgs::Odometry& base_odom, 
+  bool stopped(const nav_msgs::Odometry& base_odom,
       const double& rot_stopped_velocity,
       const double& trans_stopped_velocity);
 };

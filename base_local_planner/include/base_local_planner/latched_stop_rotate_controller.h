@@ -25,6 +25,9 @@ public:
   bool isPositionReached(LocalPlannerUtil* planner_util,
                          const geometry_msgs::PoseStamped& global_pose);
 
+  bool isGoalBypassed(LocalPlannerUtil* planner_util,
+                         const geometry_msgs::PoseStamped& global_pose);
+
   bool isGoalReached(LocalPlannerUtil* planner_util,
       OdometryHelperRos& odom_helper,
       const geometry_msgs::PoseStamped& global_pose);
@@ -87,6 +90,7 @@ private:
   // whether to latch at all, and whether in this turn we have already been in goal area
   bool latch_xy_goal_tolerance_, xy_tolerance_latch_;
   bool rotating_to_goal_;
+  double inner_xy_goal_tolerance_;
 };
 
 } /* namespace base_local_planner */

@@ -24,12 +24,20 @@ namespace base_local_planner {
 LatchedStopRotateController::LatchedStopRotateController(const std::string& name) {
   ros::NodeHandle private_nh("~/" + name);
   private_nh.param("latch_xy_goal_tolerance", latch_xy_goal_tolerance_, false);
+  private_nh.param("inner_xy_goal_tolerance", inner_xy_goal_tolerance_, 0.07); // TODO
 
   rotating_to_goal_ = false;
 }
 
 LatchedStopRotateController::~LatchedStopRotateController() {}
 
+
+bool LatchedStopRotateController::isGoalBypassed(LocalPlannerUtil* planner_util, const geometry_msgs::PoseStamped& global_pose) {
+  std::vector<geometry_msgs::PoseStamped> global_plan;
+  planner_util->getLocalPlan(global_pose, global_plan);
+  const int goal_direction_ = base_local_planner::direction(*(global_plan.end() - std::min(3ul, global_plan.size())), global_plan);
+  return base_local_planner::direction(global_pose, global_plan) != goal_direction_;
+}
 
 /**
  * returns true if we have passed the goal position.
@@ -49,12 +57,25 @@ bool LatchedStopRotateController::isPositionReached(LocalPlannerUtil* planner_ut
   double goal_x = goal_pose.pose.position.x;
   double goal_y = goal_pose.pose.position.y;
 
+  const double goal_dist = base_local_planner::getGoalPositionDistance(global_pose, goal_x, goal_y);
+  const bool reached_outer_goal = goal_dist <= xy_goal_tolerance;
+  const bool reached_inner_goal = goal_dist <= inner_xy_goal_tolerance_;
+  const bool bypassed_goal = isGoalBypassed(planner_util, global_pose);
+
+  ROS_FATAL_STREAM("-----------------------------");
+  ROS_FATAL_STREAM("goal_dist: " << goal_dist);
+  ROS_FATAL_STREAM("reached_outer_goal: " << reached_outer_goal);
+  ROS_FATAL_STREAM("reached_inner_goal: " << reached_inner_goal);
+  ROS_FATAL_STREAM("bypassed_goal: " << bypassed_goal);
+
   //check to see if we've reached the goal position
   if ((latch_xy_goal_tolerance_ && xy_tolerance_latch_) ||
-      base_local_planner::getGoalPositionDistance(global_pose, goal_x, goal_y) <= xy_goal_tolerance) {
+       (reached_outer_goal && (reached_inner_goal || bypassed_goal))) {
     xy_tolerance_latch_ = true;
+    ROS_FATAL_STREAM("TRUE");
     return true;
   }
+  ROS_FATAL_STREAM("FALSE");
   return false;
 }
 
@@ -85,9 +106,20 @@ bool LatchedStopRotateController::isGoalReached(LocalPlannerUtil* planner_util,
 
   base_local_planner::LocalPlannerLimits limits = planner_util->getCurrentLimits();
 
+  const double goal_dist = base_local_planner::getGoalPositionDistance(global_pose, goal_x, goal_y);
+  const bool reached_outer_goal = goal_dist <= xy_goal_tolerance;
+  const bool reached_inner_goal = goal_dist <= inner_xy_goal_tolerance_;
+  const bool bypassed_goal = isGoalBypassed(planner_util, global_pose);
+
+  ROS_FATAL_STREAM("-----------------------------");
+  ROS_FATAL_STREAM("goal_dist: " << goal_dist);
+  ROS_FATAL_STREAM("reached_outer_goal: " << reached_outer_goal);
+  ROS_FATAL_STREAM("reached_inner_goal: " << reached_inner_goal);
+  ROS_FATAL_STREAM("bypassed_goal: " << bypassed_goal);
+
   //check to see if we've reached the goal position
   if ((latch_xy_goal_tolerance_ && xy_tolerance_latch_) ||
-      base_local_planner::getGoalPositionDistance(global_pose, goal_x, goal_y) <= xy_goal_tolerance) {
+      (reached_outer_goal && (reached_inner_goal || bypassed_goal))) {
     //if the user wants to latch goal tolerance, if we ever reach the goal location, we'll
     //just rotate in place
     if (latch_xy_goal_tolerance_ && ! xy_tolerance_latch_) {
@@ -100,10 +132,12 @@ bool LatchedStopRotateController::isGoalReached(LocalPlannerUtil* planner_util,
     if (fabs(angle) <= limits.yaw_goal_tolerance) {
       //make sure that we're actually stopped before returning success
       if (base_local_planner::stopped(base_odom, theta_stopped_vel, trans_stopped_vel)) {
+        ROS_FATAL_STREAM("TRUE");
         return true;
       }
     }
   }
+  ROS_FATAL_STREAM("FALSE");
   return false;
 }
 

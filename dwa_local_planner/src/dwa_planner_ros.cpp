@@ -90,6 +90,7 @@ namespace dwa_local_planner {
 
       // update dwa specific configuration
       dp_->reconfigure(config);
+      inner_goal_tolerance_ = config.inner_goal_tolerance;
   }
 
   DWAPlannerROS::DWAPlannerROS() : initialized_(false),
@@ -315,6 +316,7 @@ namespace dwa_local_planner {
     dp_->updatePlanAndLocalCosts(current_pose_, transformed_plan, costmap_ros_->getRobotFootprint());
 
     if (latchedStopRotateController_.isPositionReached(&planner_util_, current_pose_)) {
+      ROS_FATAL_STREAM("position reached!");
       //publish an empty plan because we've reached our goal position
       std::vector<geometry_msgs::PoseStamped> local_plan;
       std::vector<geometry_msgs::PoseStamped> transformed_plan;
