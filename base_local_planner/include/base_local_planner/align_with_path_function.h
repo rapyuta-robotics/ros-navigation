@@ -19,6 +19,10 @@ public:
 
   double scoreTrajectory(Trajectory &traj);
 
+  bool isTurningRequired() const {
+    return std::abs(current_yaw_diff_) > MAX_ANGLE_ERROR;
+  }
+
 private:
   double current_yaw_diff_;
   double max_vel_theta_;

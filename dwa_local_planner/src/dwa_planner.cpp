@@ -327,7 +327,7 @@ namespace dwa_local_planner {
     goal_front_costs_.setTargetPoses(front_global_plan);
 
     constexpr double MIN_GOAL_DIST_SQ = 0.7;
-    if (sq_dist > MIN_GOAL_DIST_SQ) {
+    if (sq_dist > MIN_GOAL_DIST_SQ && path_align_costs_.isTurningRequired()) {
       // enable turning penalty
       path_align_costs_.setScale(1.0);
       // disable goal cost during turning because turning won't move the robot closer to the goal
