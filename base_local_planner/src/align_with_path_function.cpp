@@ -36,9 +36,7 @@ double AlignWithPathFunction::scoreTrajectory(Trajectory &traj) {
     return 0;
   }
 
-  // make spin velocity proportional to delta yaw
-  // spin fast when far away from target yaw and slow down once we get closer
-  return std::abs(std::abs(current_yaw_diff_) / M_PI - std::abs(traj.thetav_) / (max_vel_theta_ + 1e-3));
+  return std::abs(angles::normalize_angle(current_yaw_diff_ - traj.thetav_ * PREDICTION_TIME));
 }
 
 } /* namespace base_local_planner */
