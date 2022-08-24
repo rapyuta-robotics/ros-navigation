@@ -12,8 +12,6 @@ class AlignWithPathFunction : public base_local_planner::TrajectoryCostFunction 
 public:
   AlignWithPathFunction();
 
-  void setMaxVelTheta(double max_vel_theta);
-
   void setTargetPoses(std::vector<geometry_msgs::PoseStamped>& target_poses, const geometry_msgs::PoseStamped& global_pose);
 
   bool prepare();
