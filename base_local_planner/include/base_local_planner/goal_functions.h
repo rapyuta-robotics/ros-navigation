@@ -54,7 +54,9 @@
 namespace base_local_planner {
 
   /**
-   * Compute the direction of a point from the normal passing through the goal
+   * Compute the direction of a point from the normal passing through the goal.
+   * Draw a line perpendicular to the vector AB (A=pose at goal index - 3, B=goal pose)
+   * and compute if a point is before or after that line.
    *
    * @param global_pose The pose of the robot in the global frame
    * @param global_plan The plan being followed
