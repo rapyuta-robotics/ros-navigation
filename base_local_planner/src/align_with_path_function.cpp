@@ -13,15 +13,14 @@ void AlignWithPathFunction::setMaxVelTheta(double max_vel_theta) {
   max_vel_theta_ = max_vel_theta;
 }
 
-void AlignWithPathFunction::setTargetPoses(std::vector<geometry_msgs::PoseStamped>& target_poses,
-                                           const geometry_msgs::PoseStamped& global_pose) {
+void AlignWithPathFunction::setTargetPoses(std::vector<geometry_msgs::PoseStamped>& target_poses, const geometry_msgs::PoseStamped& global_pose) {
   current_yaw_diff_ = 0;
   const int num_points = target_poses.size();
   if (num_points <= 0) {
     return;
   }
   // todo: decide which point to pick
-  geometry_msgs::PoseStamped path_node = *(target_poses.begin() + std::min(3, num_points-1));
+  geometry_msgs::PoseStamped path_node =  *(target_poses.begin() + std::min(3, num_points-1));
   const double path_yaw = 2 * atan2 (path_node.pose.orientation.z, path_node.pose.orientation.w);
 
   const double current_yaw = 2 * atan2(global_pose.pose.orientation.z, global_pose.pose.orientation.w);
@@ -32,7 +31,7 @@ bool AlignWithPathFunction::prepare() {
   return true;
 }
 
-double AlignWithPathFunction::scoreTrajectory(Trajectory& traj) {
+double AlignWithPathFunction::scoreTrajectory(Trajectory &traj) {
   if (!isTurningRequired()) {
     return 0;
   }
