@@ -7,11 +7,7 @@ namespace base_local_planner {
 constexpr double MIN_ROT_SPEED = 0.1;
 constexpr double PENALTY_COST = 1e6;
 
-AlignWithPathFunction::AlignWithPathFunction() : current_yaw_diff_(0), max_vel_theta_(0) {}
-
-void AlignWithPathFunction::setMaxVelTheta(double max_vel_theta) {
-  max_vel_theta_ = max_vel_theta;
-}
+AlignWithPathFunction::AlignWithPathFunction() : current_yaw_diff_(0) {}
 
 void AlignWithPathFunction::setTargetPoses(std::vector<geometry_msgs::PoseStamped>& target_poses, const geometry_msgs::PoseStamped& global_pose) {
   current_yaw_diff_ = 0;

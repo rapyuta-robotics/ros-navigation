@@ -26,7 +26,6 @@ public:
 
 private:
   double current_yaw_diff_;
-  double max_vel_theta_;
 };
 
 } /* namespace base_local_planner */

@@ -85,8 +85,6 @@ namespace dwa_local_planner {
 
     twirling_costs_.setScale(config.twirling_scale);
 
-    path_align_costs_.setMaxVelTheta(config.max_vel_theta);
-
     backwardvel_scale_ = 1.2 * config.sim_time * (config.path_distance_bias + config.goal_distance_bias);
     prefer_forward_costs_.setScale(backwardvel_scale_);
 
