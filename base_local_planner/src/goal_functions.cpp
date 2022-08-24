@@ -46,7 +46,7 @@
 
 namespace base_local_planner {
 
-  int direction(const geometry_msgs::PoseStamped& global_pose, std::vector<geometry_msgs::PoseStamped>& global_plan) {
+  int direction(const geometry_msgs::PoseStamped& global_pose, const std::vector<geometry_msgs::PoseStamped>& global_plan) {
     const geometry_msgs::PoseStamped global_goal = global_plan.back();
     // We use third last point to the final goal to avoid eps issues as distance b/w the last and second last point can be
     // smaller than discretization resolution

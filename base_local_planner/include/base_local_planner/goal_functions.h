@@ -53,9 +53,14 @@
 
 namespace base_local_planner {
 
-  // TODO docs
-  // Compute the direction of a point from the normal passing through the goal
-  int direction(const geometry_msgs::PoseStamped& global_pose, std::vector<geometry_msgs::PoseStamped>& global_plan);
+  /**
+   * Compute the direction of a point from the normal passing through the goal
+   *
+   * @param global_pose The pose of the robot in the global frame
+   * @param global_plan The plan being followed
+   * @return Direction
+   */
+  int direction(const geometry_msgs::PoseStamped& global_pose, const std::vector<geometry_msgs::PoseStamped>& global_plan);
 
   /**
    * @brief  return squared distance to check if the goal position has been achieved

@@ -90,7 +90,6 @@ private:
   // whether to latch at all, and whether in this turn we have already been in goal area
   bool latch_xy_goal_tolerance_, xy_tolerance_latch_;
   bool rotating_to_goal_;
-  double inner_xy_goal_tolerance_;
 };
 
 } /* namespace base_local_planner */

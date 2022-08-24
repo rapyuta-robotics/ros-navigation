@@ -82,6 +82,7 @@ namespace dwa_local_planner {
       limits.acc_lim_theta = config.acc_lim_theta;
       limits.acc_lim_trans = config.acc_lim_trans;
       limits.xy_goal_tolerance = config.xy_goal_tolerance;
+      limits.inner_xy_goal_tolerance = config.inner_xy_goal_tolerance;
       limits.yaw_goal_tolerance = config.yaw_goal_tolerance;
       limits.prune_plan = config.prune_plan;
       limits.trans_stopped_vel = config.trans_stopped_vel;
@@ -90,7 +91,6 @@ namespace dwa_local_planner {
 
       // update dwa specific configuration
       dp_->reconfigure(config);
-      inner_goal_tolerance_ = config.inner_goal_tolerance;
   }
 
   DWAPlannerROS::DWAPlannerROS() : initialized_(false),
@@ -316,7 +316,6 @@ namespace dwa_local_planner {
     dp_->updatePlanAndLocalCosts(current_pose_, transformed_plan, costmap_ros_->getRobotFootprint());
 
     if (latchedStopRotateController_.isPositionReached(&planner_util_, current_pose_)) {
-      ROS_FATAL_STREAM("position reached!");
       //publish an empty plan because we've reached our goal position
       std::vector<geometry_msgs::PoseStamped> local_plan;
       std::vector<geometry_msgs::PoseStamped> transformed_plan;
