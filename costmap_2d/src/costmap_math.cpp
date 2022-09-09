@@ -94,3 +94,10 @@ double orientation(double x0, double y0, double x1, double y1)
   const double dy = y1 - y0;
   return atan2(dy, dx);
 }
+
+double positiveAngle(double x0, double y0, double x1, double y1)
+{
+  const double angle1 = atan2(y0, x0);
+  const double angle2 = atan2(y1, x1);
+  return std::remainder(angle2 - angle1, M_PI);
+}

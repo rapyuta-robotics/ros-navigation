@@ -66,6 +66,54 @@ void calculateMinAndMaxDistances(const std::vector<geometry_msgs::Point>& footpr
   max_dist = std::max(max_dist, std::max(vertex_dist, edge_dist));
 }
 
+/* p[] is in standard form, ie, counterclockwise order,
+     distinct vertices, no collinear vertices.
+   ANGLE(m, n) is a procedure that returns the clockwise angle
+     swept out by a ray as it rotates from a position parallel
+     to the directed segment Pm,Pm+1 to a position parallel to Pn, Pn+1
+   We assume all indices are reduced to mod N (so that N+1 = 1).
+*/
+std::vector<std::pair<int, int>> getAllAntipodalPairs(const std::vector<geometry_msgs::Point>& footprint)
+{
+  std::vector<std::pair<int, int>> antipodal_pairs;
+
+  // Find first antipodal pair by locating vertex opposite P1
+  int i = 0;
+  int j = 1;
+  while (positiveAngle(footprint[i].x, footprint[i].y, footprint[j].x, footprint[j].y) < M_PI)
+    ++j;
+  antipodal_pairs.push_back({ i, j });
+
+  // Loop on j until all of P has been scanned
+  while (j < footprint.size())
+  {
+    bool last_pt = j == (footprint.size() - 1);
+    double a = 2 * M_PI - positiveAngle(footprint[i].x, footprint[i].y, footprint[j].x, footprint[j].y);
+    if (a == M_PI)  // Pi Pi+1 and Pj Pj+1 are parallel
+    {
+      antipodal_pairs.push_back({ i + 1, j });
+      antipodal_pairs.push_back({ i, last_pt ? 0 : j + 1 });
+      antipodal_pairs.push_back({ i + 1, last_pt ? 0 : j + 1 });
+
+      // Notice that (i, j) has been added to the result before being the pivots, so no need to yield i,j
+      ++i;
+      ++j;
+    }
+    else if (a < M_PI)  // Will touch Pi Pi+1 first
+    {
+      antipodal_pairs.push_back({ i + 1, j });
+      ++i;
+    }
+    else
+    {
+      antipodal_pairs.push_back({ i, last_pt ? 0 : j + 1 });  // Will touch Pj Pj+1 first
+      ++j;
+    }
+  }
+
+  return antipodal_pairs;
+}
+
 double minSweepingAreaOrientation(const std::vector<geometry_msgs::Point>& footprint)
 {
   double min_dist = std::numeric_limits<double>::max();
@@ -96,7 +144,30 @@ double minSweepingAreaOrientation(const std::vector<geometry_msgs::Point>& footp
   // return the orientation of the closest edge, directed from back to front (+x axis direction)
   std::sort(closest_edge.begin(), closest_edge.end(),
             [](const geometry_msgs::Point& p1, const geometry_msgs::Point& p2) { return p1.x < p2.x; });
-  return orientation(closest_edge.front().x, closest_edge.front().y, closest_edge.back().x, closest_edge.back().y);
+//  return orientation(closest_edge.front().x, closest_edge.front().y, closest_edge.back().x, closest_edge.back().y);
+  double result1 = orientation(closest_edge.front().x, closest_edge.front().y, closest_edge.back().x, closest_edge.back().y);
+
+  std::vector<std::pair<int, int>> antipodal_pairs = getAllAntipodalPairs(footprint);
+  double footprint_width = INFINITY;
+  size_t closest_ap_pair = INFINITY;
+  for (int i = 0; i < antipodal_pairs.size(); ++i)
+  {
+    const auto& ap_pair = antipodal_pairs[i];
+    const geometry_msgs::Point& p1 = footprint[ap_pair.first];
+    const geometry_msgs::Point& p2 = footprint[ap_pair.second];
+    const double dist = distance(p1.x, p1.y, p2.x, p2.y);
+    if (dist < footprint_width)
+    {
+      footprint_width = dist;
+      closest_ap_pair = i;
+    }
+  }
+  const geometry_msgs::Point& p1 = footprint[antipodal_pairs[closest_ap_pair].first];
+  const geometry_msgs::Point& p2 = footprint[antipodal_pairs[closest_ap_pair].second];
+  double result = orientation(p1.x, p1.y, p2.x, p2.y);
+
+  ROS_WARN_STREAM(result1 <<   "    " <<result);
+  return result;
 }
 
 geometry_msgs::Point32 toPoint32(geometry_msgs::Point pt)
