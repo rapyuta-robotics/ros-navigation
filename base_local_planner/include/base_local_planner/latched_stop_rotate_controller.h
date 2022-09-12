@@ -25,9 +25,6 @@ public:
   bool isPositionReached(LocalPlannerUtil* planner_util,
                          const geometry_msgs::PoseStamped& global_pose);
 
-  bool isGoalBypassed(LocalPlannerUtil* planner_util,
-                      const geometry_msgs::PoseStamped& global_pose);
-
   bool isGoalReached(LocalPlannerUtil* planner_util,
       OdometryHelperRos& odom_helper,
       const geometry_msgs::PoseStamped& global_pose);

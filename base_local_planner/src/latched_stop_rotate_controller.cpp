@@ -31,13 +31,6 @@ LatchedStopRotateController::LatchedStopRotateController(const std::string& name
 LatchedStopRotateController::~LatchedStopRotateController() {}
 
 
-bool LatchedStopRotateController::isGoalBypassed(LocalPlannerUtil* planner_util, const geometry_msgs::PoseStamped& global_pose) {
-  std::vector<geometry_msgs::PoseStamped> global_plan;
-  planner_util->getLocalPlan(global_pose, global_plan);
-  const int goal_direction = base_local_planner::direction(*(global_plan.end() - std::min(3ul, global_plan.size())), global_plan);
-  return base_local_planner::direction(global_pose, global_plan) != goal_direction;
-}
-
 /**
  * returns true if we have passed the goal position.
  * Meaning we might have overshot on the position beyond tolerance, yet still return true.
@@ -46,7 +39,6 @@ bool LatchedStopRotateController::isGoalBypassed(LocalPlannerUtil* planner_util,
 bool LatchedStopRotateController::isPositionReached(LocalPlannerUtil* planner_util,
     const geometry_msgs::PoseStamped& global_pose) {
   double xy_goal_tolerance = planner_util->getCurrentLimits().xy_goal_tolerance;
-  double inner_xy_goal_tolerance = planner_util->getCurrentLimits().inner_xy_goal_tolerance;
 
   //we assume the global goal is the last point in the global plan
   geometry_msgs::PoseStamped goal_pose;
@@ -57,14 +49,9 @@ bool LatchedStopRotateController::isPositionReached(LocalPlannerUtil* planner_ut
   double goal_x = goal_pose.pose.position.x;
   double goal_y = goal_pose.pose.position.y;
 
-  const double goal_dist = base_local_planner::getGoalPositionDistance(global_pose, goal_x, goal_y);
-  const bool reached_outer_goal = goal_dist <= xy_goal_tolerance;
-  const bool reached_inner_goal = goal_dist <= inner_xy_goal_tolerance;
-  const bool bypassed_goal = isGoalBypassed(planner_util, global_pose);
-
   //check to see if we've reached the goal position
   if ((latch_xy_goal_tolerance_ && xy_tolerance_latch_) ||
-       (reached_outer_goal && (reached_inner_goal || bypassed_goal))) {
+      base_local_planner::getGoalPositionDistance(global_pose, goal_x, goal_y) <= xy_goal_tolerance) {
     xy_tolerance_latch_ = true;
     return true;
   }
@@ -80,7 +67,6 @@ bool LatchedStopRotateController::isGoalReached(LocalPlannerUtil* planner_util,
     OdometryHelperRos& odom_helper,
     const geometry_msgs::PoseStamped& global_pose) {
   double xy_goal_tolerance = planner_util->getCurrentLimits().xy_goal_tolerance;
-  double inner_xy_goal_tolerance = planner_util->getCurrentLimits().inner_xy_goal_tolerance;
   double theta_stopped_vel = planner_util->getCurrentLimits().theta_stopped_vel;
   double trans_stopped_vel = planner_util->getCurrentLimits().trans_stopped_vel;
 
@@ -99,14 +85,9 @@ bool LatchedStopRotateController::isGoalReached(LocalPlannerUtil* planner_util,
 
   base_local_planner::LocalPlannerLimits limits = planner_util->getCurrentLimits();
 
-  const double goal_dist = base_local_planner::getGoalPositionDistance(global_pose, goal_x, goal_y);
-  const bool reached_outer_goal = goal_dist <= xy_goal_tolerance;
-  const bool reached_inner_goal = goal_dist <= inner_xy_goal_tolerance;
-  const bool bypassed_goal = isGoalBypassed(planner_util, global_pose);
-
   //check to see if we've reached the goal position
   if ((latch_xy_goal_tolerance_ && xy_tolerance_latch_) ||
-      (reached_outer_goal && (reached_inner_goal || bypassed_goal))) {
+      base_local_planner::getGoalPositionDistance(global_pose, goal_x, goal_y) <= xy_goal_tolerance) {
     //if the user wants to latch goal tolerance, if we ever reach the goal location, we'll
     //just rotate in place
     if (latch_xy_goal_tolerance_ && ! xy_tolerance_latch_) {

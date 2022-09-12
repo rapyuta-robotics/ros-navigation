@@ -94,7 +94,7 @@ namespace dwa_local_planner {
   }
 
   DWAPlannerROS::DWAPlannerROS() : initialized_(false),
-      odom_helper_("odom"), setup_(false) {
+      odom_helper_("odom"), setup_(false), oscillating_(false), prev_vel_dir_(0) {
 
   }
 
@@ -154,6 +154,7 @@ namespace dwa_local_planner {
             || orig_global_plan.back().header.frame_id != current_goal_.header.frame_id) {
       // reset latching only if the goal changed
       latchedStopRotateController_.resetLatching();
+      resetInnerLatching();
     }
 
     current_goal_ = !orig_global_plan.empty() ? orig_global_plan.back() : geometry_msgs::PoseStamped();
@@ -172,10 +173,13 @@ namespace dwa_local_planner {
       return false;
     }
 
-    if(latchedStopRotateController_.isGoalReached(&planner_util_, odom_helper_, current_pose_)) {
+    const bool reached_outer_goal = latchedStopRotateController_.isGoalReached(&planner_util_, odom_helper_, current_pose_);
+    const bool reached_inner_goal = reachedInnerGoal();
+    if(reached_outer_goal && reached_inner_goal) {
       ROS_INFO("Goal reached");
       // reset latching such that the latching doesn't apply even if the same goal is targeted again
       latchedStopRotateController_.resetLatching();
+      resetInnerLatching();
       return true;
     } else {
       return false;
@@ -210,7 +214,26 @@ namespace dwa_local_planner {
     delete dsrv_;
   }
 
+  void DWAPlannerROS::resetInnerLatching() {
+    latched_inner_goal_ = false;
+    prev_vel_dir_ = 0;
+    oscillating_ = false;
+  }
 
+  bool DWAPlannerROS::reachedInnerGoal() {
+    std::vector<geometry_msgs::PoseStamped> plan;
+    planner_util_.getLocalPlan(current_pose_, plan);
+    const int goal_direction = base_local_planner::direction(*(plan.end() - std::min(3ul, plan.size())), plan);
+    const double bypassed_goal = base_local_planner::direction(current_pose_, plan) != goal_direction;
+
+    double goal_x = plan.back().pose.position.x;
+    double goal_y = plan.back().pose.position.y;
+    double inner_xy_goal_tolerance = planner_util_.getCurrentLimits().inner_xy_goal_tolerance;
+    const double goal_dist = base_local_planner::getGoalPositionDistance(current_pose_, goal_x, goal_y);
+    latched_inner_goal_ = latched_inner_goal_ || goal_dist <= inner_xy_goal_tolerance;
+
+    return latched_inner_goal_ ||  bypassed_goal || oscillating_;
+  }
 
   uint32_t DWAPlannerROS::dwaComputeVelocityCommands(geometry_msgs::PoseStamped& global_pose,
                                                      geometry_msgs::TwistStamped& cmd_vel, std::string& message) {
@@ -315,32 +338,49 @@ namespace dwa_local_planner {
     // update plan in dwa_planner even if we just stop and rotate, to allow checkTrajectory
     dp_->updatePlanAndLocalCosts(current_pose_, transformed_plan, costmap_ros_->getRobotFootprint());
 
-    if (latchedStopRotateController_.isPositionReached(&planner_util_, current_pose_)) {
-      //publish an empty plan because we've reached our goal position
-      std::vector<geometry_msgs::PoseStamped> local_plan;
-      std::vector<geometry_msgs::PoseStamped> transformed_plan;
-      publishGlobalPlan(transformed_plan);
-      publishLocalPlan(local_plan);
-      base_local_planner::LocalPlannerLimits limits = planner_util_.getCurrentLimits();
-      if (latchedStopRotateController_.computeVelocityCommandsStopRotate(
-              cmd_vel.twist,
-              limits.getAccLimits(),
-              dp_->getSimPeriod(),
-              &planner_util_,
-              odom_helper_,
-              current_pose_,
-              boost::bind(&DWAPlanner::checkTrajectory, dp_, _1, _2, _3))) {
-        cmd_vel.header.stamp = ros::Time::now();
-        return mbf_msgs::ExePathResult::SUCCESS;
+    // check if we reached outer tolerance
+    const bool reached_outer_goal = latchedStopRotateController_.isPositionReached(&planner_util_, current_pose_);
+    if (reached_outer_goal) {
+      // check if we reached inner tolerance
+      if (reachedInnerGoal()) {
+        //publish an empty plan because we've reached our goal position
+        std::vector<geometry_msgs::PoseStamped> local_plan;
+        std::vector<geometry_msgs::PoseStamped> transformed_plan;
+        publishGlobalPlan(transformed_plan);
+        publishLocalPlan(local_plan);
+        base_local_planner::LocalPlannerLimits limits = planner_util_.getCurrentLimits();
+        if (latchedStopRotateController_.computeVelocityCommandsStopRotate(
+                cmd_vel.twist,
+                limits.getAccLimits(),
+                dp_->getSimPeriod(),
+                &planner_util_,
+                odom_helper_,
+                current_pose_,
+                boost::bind(&DWAPlanner::checkTrajectory, dp_, _1, _2, _3))) {
+          cmd_vel.header.stamp = ros::Time::now();
+          return mbf_msgs::ExePathResult::SUCCESS;
+        }
+        else {
+            // reset latching since DWA planner can move forward / backwards
+            latchedStopRotateController_.resetLatching();
+            resetInnerLatching();
+            ROS_INFO_NAMED("dwa_local_planner", "can't rotate in place; fall back to DWA planner");
+        }
       }
-      else {
-          // reset latching since DWA planner can move forward / backwards
-          latchedStopRotateController_.resetLatching();
-          ROS_INFO_NAMED("dwa_local_planner", "can't rotate in place; fall back to DWA planner");
-      }
+    }
+    else {
+      resetInnerLatching();
     }
 
     uint32_t result = dwaComputeVelocityCommands(current_pose_, cmd_vel, message);
+
+    // check for oscillations
+    if (reached_outer_goal) {
+      const int vel_dir = std::copysign(1, cmd_vel.twist.linear.x);
+      oscillating_ = oscillating_ || (prev_vel_dir_ != 0 && prev_vel_dir_ != vel_dir);
+      prev_vel_dir_ = vel_dir;
+    }
+
     if (result == mbf_msgs::ExePathResult::SUCCESS) {
       publishGlobalPlan(transformed_plan);
     } else {
