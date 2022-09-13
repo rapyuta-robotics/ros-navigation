@@ -163,9 +163,9 @@ namespace dwa_local_planner {
 
       void publishScaledFootprint(const geometry_msgs::PoseStamped& pose, const base_local_planner::Trajectory &traj) const;
 
-      bool reachedInnerGoal();
+      bool finishedBestEffort();
 
-      void resetInnerLatching();
+      void resetBestEffort();
 
       tf2_ros::Buffer* tf_; ///< @brief Used for transforming point clouds
 

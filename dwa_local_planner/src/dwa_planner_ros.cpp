@@ -94,7 +94,7 @@ namespace dwa_local_planner {
   }
 
   DWAPlannerROS::DWAPlannerROS() : initialized_(false),
-      odom_helper_("odom"), setup_(false), oscillating_(false), prev_vel_dir_(0) {
+      odom_helper_("odom"), setup_(false), prev_vel_dir_(0), oscillating_(false), latched_inner_goal_(false) {
 
   }
 
@@ -154,7 +154,7 @@ namespace dwa_local_planner {
             || orig_global_plan.back().header.frame_id != current_goal_.header.frame_id) {
       // reset latching only if the goal changed
       latchedStopRotateController_.resetLatching();
-      resetInnerLatching();
+      resetBestEffort();
     }
 
     current_goal_ = !orig_global_plan.empty() ? orig_global_plan.back() : geometry_msgs::PoseStamped();
@@ -174,12 +174,11 @@ namespace dwa_local_planner {
     }
 
     const bool reached_outer_goal = latchedStopRotateController_.isGoalReached(&planner_util_, odom_helper_, current_pose_);
-    const bool reached_inner_goal = reachedInnerGoal();
-    if(reached_outer_goal && reached_inner_goal) {
+    if(reached_outer_goal && finishedBestEffort()) {
       ROS_INFO("Goal reached");
       // reset latching such that the latching doesn't apply even if the same goal is targeted again
       latchedStopRotateController_.resetLatching();
-      resetInnerLatching();
+      resetBestEffort();
       return true;
     } else {
       return false;
@@ -214,13 +213,13 @@ namespace dwa_local_planner {
     delete dsrv_;
   }
 
-  void DWAPlannerROS::resetInnerLatching() {
+  void DWAPlannerROS::resetBestEffort() {
     latched_inner_goal_ = false;
     prev_vel_dir_ = 0;
     oscillating_ = false;
   }
 
-  bool DWAPlannerROS::reachedInnerGoal() {
+  bool DWAPlannerROS::finishedBestEffort() {
     std::vector<geometry_msgs::PoseStamped> plan;
     if (!planner_util_.getLocalPlan(current_pose_, plan)) {
       return false;
@@ -345,7 +344,7 @@ namespace dwa_local_planner {
     const bool reached_outer_goal = latchedStopRotateController_.isPositionReached(&planner_util_, current_pose_);
     if (reached_outer_goal) {
       // check if we reached inner tolerance
-      if (reachedInnerGoal()) {
+      if (finishedBestEffort()) {
         //publish an empty plan because we've reached our goal position
         std::vector<geometry_msgs::PoseStamped> local_plan;
         std::vector<geometry_msgs::PoseStamped> transformed_plan;
@@ -366,18 +365,18 @@ namespace dwa_local_planner {
         else {
             // reset latching since DWA planner can move forward / backwards
             latchedStopRotateController_.resetLatching();
-            resetInnerLatching();
+            resetBestEffort();
             ROS_INFO_NAMED("dwa_local_planner", "can't rotate in place; fall back to DWA planner");
         }
       }
     }
     else {
-      resetInnerLatching();
+      resetBestEffort();
     }
 
     uint32_t result = dwaComputeVelocityCommands(current_pose_, cmd_vel, message);
 
-    // check for oscillations
+    // check for oscillations while approaching inner tolerance
     if (reached_outer_goal) {
       const int vel_dir = std::copysign(1, cmd_vel.twist.linear.x);
       oscillating_ = oscillating_ || (prev_vel_dir_ != 0 && prev_vel_dir_ != vel_dir);
