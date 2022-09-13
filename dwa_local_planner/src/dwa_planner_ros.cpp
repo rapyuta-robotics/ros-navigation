@@ -222,15 +222,18 @@ namespace dwa_local_planner {
 
   bool DWAPlannerROS::reachedInnerGoal() {
     std::vector<geometry_msgs::PoseStamped> plan;
-    planner_util_.getLocalPlan(current_pose_, plan);
-    const int goal_direction = base_local_planner::direction(*(plan.end() - std::min(3ul, plan.size())), plan);
-    const double bypassed_goal = base_local_planner::direction(current_pose_, plan) != goal_direction;
+    if (!planner_util_.getLocalPlan(current_pose_, plan)) {
+      return false;
+    }
 
-    double goal_x = plan.back().pose.position.x;
-    double goal_y = plan.back().pose.position.y;
-    double inner_xy_goal_tolerance = planner_util_.getCurrentLimits().inner_xy_goal_tolerance;
+    // latch inner tolerance
+    const double goal_x = plan.back().pose.position.x;
+    const double goal_y = plan.back().pose.position.y;
+    const double inner_xy_goal_tolerance = planner_util_.getCurrentLimits().inner_xy_goal_tolerance;
     const double goal_dist = base_local_planner::getGoalPositionDistance(current_pose_, goal_x, goal_y);
     latched_inner_goal_ = latched_inner_goal_ || goal_dist <= inner_xy_goal_tolerance;
+
+    const bool bypassed_goal = base_local_planner::isGoalBypassed(plan, current_pose_);
 
     return latched_inner_goal_ ||  bypassed_goal || oscillating_;
   }

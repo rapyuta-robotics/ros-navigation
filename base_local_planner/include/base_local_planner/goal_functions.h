@@ -54,17 +54,6 @@
 namespace base_local_planner {
 
   /**
-   * Compute the direction of a point from the normal passing through the goal.
-   * Draw a line perpendicular to the vector AB (A=pose at goal index - 3, B=goal pose)
-   * and compute if a point is before or after that line.
-   *
-   * @param global_pose The pose of the robot in the global frame
-   * @param global_plan The plan being followed
-   * @return Direction
-   */
-  int direction(const geometry_msgs::PoseStamped& global_pose, const std::vector<geometry_msgs::PoseStamped>& global_plan);
-
-  /**
    * @brief  return squared distance to check if the goal position has been achieved
    * @param  global_pose The pose of the robot in the global frame
    * @param  goal_x The desired x value for the goal
@@ -149,6 +138,15 @@ namespace base_local_planner {
       const nav_msgs::Odometry& base_odom,
       double rot_stopped_vel, double trans_stopped_vel,
       double xy_goal_tolerance, double yaw_goal_tolerance);
+
+  /**
+   * @brief  Check if the goal pose has been bypassed
+   * @param global_plan The plan being followed
+   * @param global_pose The pose of the robot in the global frame
+   * @return True if bypassed, false otherwise
+   */
+  bool isGoalBypassed(const std::vector<geometry_msgs::PoseStamped>& global_plan,
+      geometry_msgs::PoseStamped& global_pose);
 
   /**
    * @brief  Check whether the robot is stopped or not

@@ -38,6 +38,7 @@
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/utils.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <numeric>
 #ifdef _MSC_VER
 #define GOAL_ATTRIBUTE_UNUSED
 #else
@@ -45,35 +46,6 @@
 #endif
 
 namespace base_local_planner {
-
-  int direction(const geometry_msgs::PoseStamped& global_pose, const std::vector<geometry_msgs::PoseStamped>& global_plan) {
-    const geometry_msgs::PoseStamped global_goal = global_plan.back();
-    // We use third last point to the final goal to avoid eps issues as distance b/w the last and second last point can be
-    // smaller than discretization resolution
-    const geometry_msgs::PoseStamped third_last = *(global_plan.end() - std::min(3ul, global_plan.size()));
-    const double x1 = global_goal.pose.position.x;
-    const double y1 = global_goal.pose.position.y;
-    const double x2 = third_last.pose.position.x;
-    const double y2 = third_last.pose.position.y;
-    const double x = global_pose.pose.position.x;
-    const double y = global_pose.pose.position.y;
-    if (y2 != y1 && x2 != x1)
-    {
-      const double slope = (y2 - y1) / (x2 - x1);
-      const double normal_slope = -1. / slope;
-      const double c = y1 - normal_slope * x1;
-      const double bx = (x1 == 0) ? 1 : 0;  // assume bx = 0 if x1 is not 0 else 1
-      const double by = normal_slope * bx + c;
-      // In formula for directional distance of a point from a line, d = (x - x1) * (y2 - y1)
-      // - (y - y1) * (x2 - x1)
-      return std::copysign(1, (x - x1) * (by - y1) - (y - y1) * (bx - x1));
-    }
-    if (y2 == y1 && x2 != x1)
-      return std::copysign(1, (x - x1));
-    if (x2 == x1 && y2 != y1)
-      return std::copysign(1, -(y - y1));
-    return 0;
-  }
 
   double getGoalPositionDistance(const geometry_msgs::PoseStamped& global_pose, double goal_x, double goal_y) {
     return hypot(goal_x - global_pose.pose.position.x, goal_y - global_pose.pose.position.y);
@@ -264,6 +236,29 @@ namespace base_local_planner {
     }
 
     return false;
+  }
+
+  bool isGoalBypassed(const std::vector<geometry_msgs::PoseStamped>& global_plan,
+      geometry_msgs::PoseStamped& global_pose) {
+    // We use third last point to the final goal to avoid eps issues
+    // as distance b/w the last and second last point can be smaller than discretization resolution
+    const geometry_msgs::PoseStamped global_goal = global_plan.back();
+    const geometry_msgs::PoseStamped third_last = *(global_plan.end() - std::min(3ul, global_plan.size()));
+
+    // vector from third last pose to goal
+    const std::vector<double> v1 = {
+      global_goal.pose.position.x - third_last.pose.position.x,
+      global_goal.pose.position.y - third_last.pose.position.y
+    };
+
+    // vector from robot pose to goal
+    const std::vector<double> v2 = {
+      global_goal.pose.position.x - global_pose.pose.position.x,
+      global_goal.pose.position.y - global_pose.pose.position.y
+    };
+
+    const double dot = std::inner_product(v1.begin(), v1.end(), v2.begin(), 0.0);
+    return dot < 0;
   }
 
   bool stopped(const nav_msgs::Odometry& base_odom,
