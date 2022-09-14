@@ -66,8 +66,4 @@ bool intersects(std::vector<geometry_msgs::Point>& polygon, float testx, float t
 
 bool intersects(std::vector<geometry_msgs::Point>& polygon1, std::vector<geometry_msgs::Point>& polygon2);
 
-double orientation(double x0, double y0, double x1, double y1);
-
-double positiveAngle(double x0, double y0, double x1, double y1);
-
 #endif  // COSTMAP_2D_COSTMAP_MATH_H_
