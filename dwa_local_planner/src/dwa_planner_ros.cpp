@@ -379,7 +379,9 @@ namespace dwa_local_planner {
     // check for oscillations while approaching inner tolerance
     if (reached_outer_goal) {
       const int vel_dir = std::copysign(1, cmd_vel.twist.linear.x);
-      oscillating_ = oscillating_ || (prev_vel_dir_ != 0 && prev_vel_dir_ != vel_dir);
+      oscillating_ = oscillating_
+        || (prev_vel_dir_ != 0 && prev_vel_dir_ != vel_dir)
+        || (cmd_vel.twist.linear.x == 0 && cmd_vel.twist.angular.z != 0);
       prev_vel_dir_ = vel_dir;
     }
 
