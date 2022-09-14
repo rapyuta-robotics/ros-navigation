@@ -44,14 +44,14 @@
 namespace base_local_planner {
 
 ObstacleCostFunction::ObstacleCostFunction(costmap_2d::Costmap2D* costmap)
-    : costmap_(costmap), sum_scores_(false), max_sideward_inflation_scale_(1.0) {
+    : costmap_(costmap), sum_scores_(false), sideward_inflation_scale_(1.0) {
   if (costmap != NULL) {
     world_model_ = new base_local_planner::CostmapModel(*costmap_);
   }
 
-  ros::NodeHandle pnh = ros::NodeHandle("~");
-  sub_ = pnh.subscribe<std_msgs::Float32>("max_sideward_inflation_scale", 1, [&](const std_msgs::Float32ConstPtr& msg){
-    max_sideward_inflation_scale_ = msg->data;
+  ros::NodeHandle pnh("~");
+  sideward_inflation_scale_sub_ = pnh.subscribe<std_msgs::Float32>("sideward_inflation_scale", 1, [&](const std_msgs::Float32ConstPtr& msg){
+    sideward_inflation_scale_ = msg->data;
   });
 }
 
@@ -80,7 +80,7 @@ std::vector<geometry_msgs::Point> ObstacleCostFunction::getScaledFootprint(const
   if (scale != 0.0) {
     const bool fwd = traj.xv_ > 0;
     const double forward_inflation = scale * max_forward_inflation_;
-    const double sideward_inflation = scale * max_sideward_inflation_scale_ * max_sideward_inflation_;
+    const double sideward_inflation = scale * sideward_inflation_scale_ * max_sideward_inflation_;
     for (unsigned int i = 0; i < scaled_footprint.size(); ++i) {
       if (fwd == (scaled_footprint[i].x > 0)) {
         // assumes no sideward motion
