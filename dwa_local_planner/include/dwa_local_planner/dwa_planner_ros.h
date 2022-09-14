@@ -196,6 +196,7 @@ namespace dwa_local_planner {
       int prev_vel_dir_;
       bool oscillating_;
       bool latched_inner_goal_;
+      std::vector<geometry_msgs::PoseStamped> transformed_plan_;
   };
 };
 #endif

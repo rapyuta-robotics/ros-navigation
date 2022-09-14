@@ -220,19 +220,18 @@ namespace dwa_local_planner {
   }
 
   bool DWAPlannerROS::finishedBestEffort() {
-    std::vector<geometry_msgs::PoseStamped> plan;
-    if (!planner_util_.getLocalPlan(current_pose_, plan)) {
+    if (transformed_plan_.empty()) {
       return false;
     }
 
     // latch inner tolerance
-    const double goal_x = plan.back().pose.position.x;
-    const double goal_y = plan.back().pose.position.y;
+    const double goal_x = transformed_plan_.back().pose.position.x;
+    const double goal_y = transformed_plan_.back().pose.position.y;
     const double inner_xy_goal_tolerance = planner_util_.getCurrentLimits().inner_xy_goal_tolerance;
     const double goal_dist = base_local_planner::getGoalPositionDistance(current_pose_, goal_x, goal_y);
     latched_inner_goal_ = latched_inner_goal_ || goal_dist <= inner_xy_goal_tolerance;
 
-    const bool bypassed_goal = base_local_planner::isGoalBypassed(plan, current_pose_);
+    const bool bypassed_goal = base_local_planner::isGoalBypassed(transformed_plan_, current_pose_);
 
     return latched_inner_goal_ ||  bypassed_goal || oscillating_;
   }
@@ -322,23 +321,23 @@ namespace dwa_local_planner {
       ROS_ERROR_STREAM_NAMED("dwa_local_planner", message);
       return mbf_msgs::ExePathResult::TF_ERROR;
     }
-    std::vector<geometry_msgs::PoseStamped> transformed_plan;
-    if ( ! planner_util_.getLocalPlan(current_pose_, transformed_plan)) {
+
+    if ( ! planner_util_.getLocalPlan(current_pose_, transformed_plan_)) {
       message = "Could not get local plan";
       ROS_ERROR_STREAM_NAMED("dwa_local_planner", message);
       return mbf_msgs::ExePathResult::TF_ERROR;
     }
 
     //if the global plan passed in is empty... we won't do anything
-    if(transformed_plan.empty()) {
+    if(transformed_plan_.empty()) {
       message = "Received an empty transformed plan";
       ROS_ERROR_STREAM_NAMED("dwa_local_planner", message);
       return mbf_msgs::ExePathResult::INVALID_PATH;
     }
-    ROS_DEBUG_NAMED("dwa_local_planner", "Received a transformed plan with %zu points.", transformed_plan.size());
+    ROS_DEBUG_NAMED("dwa_local_planner", "Received a transformed plan with %zu points.", transformed_plan_.size());
 
     // update plan in dwa_planner even if we just stop and rotate, to allow checkTrajectory
-    dp_->updatePlanAndLocalCosts(current_pose_, transformed_plan, costmap_ros_->getRobotFootprint());
+    dp_->updatePlanAndLocalCosts(current_pose_, transformed_plan_, costmap_ros_->getRobotFootprint());
 
     // check if we reached outer tolerance
     const bool reached_outer_goal = latchedStopRotateController_.isPositionReached(&planner_util_, current_pose_);
@@ -386,7 +385,7 @@ namespace dwa_local_planner {
     }
 
     if (result == mbf_msgs::ExePathResult::SUCCESS) {
-      publishGlobalPlan(transformed_plan);
+      publishGlobalPlan(transformed_plan_);
     } else {
       ROS_WARN_NAMED("dwa_local_planner", "DWA planner failed to produce path.");
       std::vector<geometry_msgs::PoseStamped> empty_plan;
