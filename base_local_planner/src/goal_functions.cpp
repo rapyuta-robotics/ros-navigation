@@ -238,29 +238,6 @@ namespace base_local_planner {
     return false;
   }
 
-  bool isGoalBypassed(const std::vector<geometry_msgs::PoseStamped>& global_plan,
-      geometry_msgs::PoseStamped& global_pose) {
-    // We use third last point to the final goal to avoid eps issues
-    // as distance b/w the last and second last point can be smaller than discretization resolution
-    const geometry_msgs::PoseStamped global_goal = global_plan.back();
-    const geometry_msgs::PoseStamped third_last = *(global_plan.end() - std::min(3ul, global_plan.size()));
-
-    // vector from third last pose to goal
-    const std::vector<double> v1 = {
-      global_goal.pose.position.x - third_last.pose.position.x,
-      global_goal.pose.position.y - third_last.pose.position.y
-    };
-
-    // vector from robot pose to goal
-    const std::vector<double> v2 = {
-      global_goal.pose.position.x - global_pose.pose.position.x,
-      global_goal.pose.position.y - global_pose.pose.position.y
-    };
-
-    const double dot = std::inner_product(v1.begin(), v1.end(), v2.begin(), 0.0);
-    return dot < 0;
-  }
-
   bool stopped(const nav_msgs::Odometry& base_odom, 
       const double& rot_stopped_velocity, const double& trans_stopped_velocity){
     return fabs(base_odom.twist.twist.angular.z) <= rot_stopped_velocity 

@@ -197,6 +197,7 @@ namespace dwa_local_planner {
       bool oscillating_;
       bool latched_inner_goal_;
       std::vector<geometry_msgs::PoseStamped> transformed_plan_;
+      boost::optional<geometry_msgs::PoseStamped> outer_goal_entry_;
   };
 };
 #endif

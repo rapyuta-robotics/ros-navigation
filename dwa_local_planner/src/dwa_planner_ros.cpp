@@ -47,6 +47,7 @@
 #include <nav_msgs/Path.h>
 #include <visualization_msgs/Marker.h>
 #include <tf2/utils.h>
+#include <numeric>
 
 #include <nav_core/parameter_magic.h>
 
@@ -217,10 +218,11 @@ namespace dwa_local_planner {
     latched_inner_goal_ = false;
     prev_vel_dir_ = 0;
     oscillating_ = false;
+    outer_goal_entry_.reset();
   }
 
   bool DWAPlannerROS::finishedBestEffort() {
-    if (transformed_plan_.empty()) {
+    if (transformed_plan_.empty() || !outer_goal_entry_) {
       return false;
     }
 
@@ -231,7 +233,16 @@ namespace dwa_local_planner {
     const double goal_dist = base_local_planner::getGoalPositionDistance(current_pose_, goal_x, goal_y);
     latched_inner_goal_ = latched_inner_goal_ || goal_dist <= inner_xy_goal_tolerance;
 
-    const bool bypassed_goal = base_local_planner::isGoalBypassed(transformed_plan_, current_pose_);
+    // check if bypassed goal
+    const std::vector<double> v1 = {
+      goal_x - outer_goal_entry_->pose.position.x,
+      goal_y - outer_goal_entry_->pose.position.y
+    };
+    const std::vector<double> v2 = {
+      goal_x - current_pose_.pose.position.x,
+      goal_y - current_pose_.pose.position.y
+    };
+    const bool bypassed_goal = std::inner_product(v1.begin(), v1.end(), v2.begin(), 0.0) < 0;
 
     return latched_inner_goal_ ||  bypassed_goal || oscillating_;
   }
@@ -342,6 +353,10 @@ namespace dwa_local_planner {
     // check if we reached outer tolerance
     const bool reached_outer_goal = latchedStopRotateController_.isPositionReached(&planner_util_, current_pose_);
     if (reached_outer_goal) {
+      if (!outer_goal_entry_) {
+        outer_goal_entry_ = current_pose_;
+      }
+      
       // check if we reached inner tolerance
       if (finishedBestEffort()) {
         //publish an empty plan because we've reached our goal position

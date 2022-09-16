@@ -140,15 +140,6 @@ namespace base_local_planner {
       double xy_goal_tolerance, double yaw_goal_tolerance);
 
   /**
-   * @brief  Check if the goal pose has been bypassed
-   * @param global_plan The plan being followed
-   * @param global_pose The pose of the robot in the global frame
-   * @return True if bypassed, false otherwise
-   */
-  bool isGoalBypassed(const std::vector<geometry_msgs::PoseStamped>& global_plan,
-      geometry_msgs::PoseStamped& global_pose);
-
-  /**
    * @brief  Check whether the robot is stopped or not
    * @param base_odom The current odometry information for the robot
    * @param rot_stopped_velocity The rotational velocity below which the robot is considered stopped
