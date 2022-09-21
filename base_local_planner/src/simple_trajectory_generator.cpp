@@ -67,7 +67,7 @@ void SimpleTrajectoryGenerator::initialise(
   /*
    * We actually generate all velocity sample vectors here, from which to generate trajectories later on
    */
-  double max_vel_th = limits->max_vel_theta;
+  double max_vel_th = std::max(limits->max_vel_theta, limits->max_vel_theta_spin);
   double min_vel_th = -1.0 * max_vel_th;
   discretize_by_time_ = discretize_by_time;
   Eigen::Vector3f acc_lim = limits->getAccLimits();
@@ -203,6 +203,16 @@ bool SimpleTrajectoryGenerator::generateTrajectory(
   }
   // make sure we do not exceed max diagonal (x+y) translational velocity (if set)
   if (limits_->max_vel_trans >=0 && vmag - eps > limits_->max_vel_trans) {
+    return false;
+  }
+
+  // make sure we do not exceed max vel theta
+  const double abs_thetav = abs(sample_target_vel[2]);
+  const double turn_radius =  vmag / abs_thetav;
+  const bool spin_in_place = turn_radius < 0.05;
+  if (spin_in_place && abs_thetav > limits_->max_vel_theta_spin
+      || !spin_in_place && abs_thetav > limits_->max_vel_theta)
+  {
     return false;
   }
 
