@@ -84,7 +84,6 @@ namespace dwa_local_planner {
     obstacle_costs_.setParams(config.max_vel_trans, config.max_forward_inflation, config.max_sideward_inflation, config.scaling_speed);
 
     twirling_costs_.setScale(config.twirling_scale);
-    prefer_fast_spin_costs_.setScale(config.prefer_fast_spin_scale);
 
     backwardvel_scale_ = 1.2 * config.sim_time * (config.path_distance_bias + config.goal_distance_bias);
     prefer_forward_costs_.setScale(backwardvel_scale_);
@@ -177,7 +176,6 @@ namespace dwa_local_planner {
     critics.push_back(&goal_costs_); // prefers trajectories that go towards (local) goal, based on wave propagation
     critics.push_back(&prefer_forward_costs_); // prefer trajectories that don't go backwards
     critics.push_back(&twirling_costs_); // optionally prefer trajectories that don't spin
-    critics.push_back(&prefer_fast_spin_costs_); // prefer trajectories that spin in place faster
 
     // trajectory generators
     std::vector<base_local_planner::TrajectorySampleGenerator*> generator_list;
