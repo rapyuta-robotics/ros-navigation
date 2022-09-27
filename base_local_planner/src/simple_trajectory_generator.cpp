@@ -69,7 +69,7 @@ void SimpleTrajectoryGenerator::initialise(
    */
   double max_vel_th = limits->max_vel_theta;
   double min_vel_th = -1.0 * max_vel_th;
-  double max_vel_th_spin = limits->max_vel_theta_spin;
+  double max_vel_th_spin = std::max(limits->max_vel_theta_spin, max_vel_th);
   double min_vel_th_spin = -1.0 * max_vel_th_spin;
   discretize_by_time_ = discretize_by_time;
   Eigen::Vector3f acc_lim = limits->getAccLimits();
@@ -130,26 +130,21 @@ void SimpleTrajectoryGenerator::initialise(
     Eigen::Vector3f vel_samp = Eigen::Vector3f::Zero();
     VelocityIterator x_it(min_vel[0], max_vel[0], vsamples[0]);
     VelocityIterator y_it(min_vel[1], max_vel[1], vsamples[1]);
-    VelocityIterator th_it(min_vel[2], max_vel[2], vsamples[2]);
     for(; !x_it.isFinished(); x_it++) {
       vel_samp[0] = x_it.getVelocity();
       for(; !y_it.isFinished(); y_it++) {
         vel_samp[1] = y_it.getVelocity();
+
+        // allow higher ang vels if lin vel is low
+        VelocityIterator th_it = hypot(vel_samp[0], vel_samp[1]) > 2 * limits->min_vel_trans ?
+                                   VelocityIterator(min_vel[2], max_vel[2], vsamples[2])
+                                   : VelocityIterator(min_vel[3], max_vel[3], vsamples[2]);
+
         for(; !th_it.isFinished(); th_it++) {
           vel_samp[2] = th_it.getVelocity();
-
-          // spin in place if turn radius less than 10cm
-          if (hypot(vel_samp[0], vel_samp[1]) / abs(vel_samp[2]) < 0.1) {
-            const double t = (vel_samp[2] - min_vel[2]) / (max_vel[2] - min_vel[2]);
-            vel_samp[0] = 0;
-            vel_samp[1] = 0;
-            vel_samp[2] = min_vel[3] + t * (max_vel[3] - min_vel[3]);
-          }
-
           //ROS_DEBUG("Sample %f, %f, %f", vel_samp[0], vel_samp[1], vel_samp[2]);
           sample_params_.push_back(vel_samp);
         }
-        th_it.reset();
       }
       y_it.reset();
     }
