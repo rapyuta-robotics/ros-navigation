@@ -136,6 +136,7 @@ void SimpleTrajectoryGenerator::initialise(
         vel_samp[1] = y_it.getVelocity();
 
         // allow higher ang vels if lin vel is low
+        // (2 * min_vel_trans is some arbitrarily defined threshold)
         VelocityIterator th_it = hypot(vel_samp[0], vel_samp[1]) > 2 * limits->min_vel_trans ?
                                    VelocityIterator(min_vel[2], max_vel[2], vsamples[2])
                                    : VelocityIterator(min_vel[3], max_vel[3], vsamples[2]);
