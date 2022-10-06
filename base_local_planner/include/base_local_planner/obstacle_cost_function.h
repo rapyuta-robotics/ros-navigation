@@ -61,7 +61,7 @@ public:
 
   void setSumScores(bool score_sums){ sum_scores_=score_sums; }
 
-  void setParams(double max_trans_vel, double max_forward_inflation, double max_sideward_inflation, double scaling_speed, bool occdist_use_footprint);
+  void setParams(double max_trans_vel, double max_forward_inflation, double max_sideward_inflation, double scaling_speed, bool occdist_use_footprint = true);
   void setFootprint(std::vector<geometry_msgs::Point> footprint_spec);
   std::vector<geometry_msgs::Point> getScaledFootprint(const Trajectory& traj) const;
 
