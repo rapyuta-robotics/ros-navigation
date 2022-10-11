@@ -107,7 +107,7 @@ public:
     unsigned char cost = 0;
     if (distance == 0)
       cost = LETHAL_OBSTACLE;
-    else if (inscribed_radius && distance * resolution_ <= inscribed_radius)
+    else if (distance * resolution_ <= inscribed_radius)
       cost = INSCRIBED_INFLATED_OBSTACLE;
     else
     {
