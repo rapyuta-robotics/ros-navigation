@@ -94,12 +94,13 @@ add_library(base_local_planner
 	src/align_with_path_function.cpp
 	src/footprint_helper.cpp
 	src/goal_functions.cpp
+	src/latched_stop_rotate_controller.cpp
+	src/local_planner_util.cpp
+	src/magnitude_cost_function.cpp
 	src/map_cell.cpp
 	src/map_grid.cpp
 	src/map_grid_visualizer.cpp
 	src/map_grid_cost_function.cpp
-	src/latched_stop_rotate_controller.cpp
-	src/local_planner_util.cpp
 	src/odometry_helper_ros.cpp
 	src/obstacle_cost_function.cpp
 	src/oscillation_cost_function.cpp
