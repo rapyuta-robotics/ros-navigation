@@ -166,6 +166,7 @@ void GlobalPlanner::reconfigureCB(global_planner::GlobalPlannerConfig& config, u
     planner_->setNeutralCost(config.neutral_cost);
     planner_->setFactor(config.cost_factor);
     publish_potential_ = config.publish_potential;
+    publish_inscribed_ = config.publish_inscribed;
     orientation_filter_->setMode(config.orientation_mode);
     orientation_filter_->setWindowSize(config.orientation_window_size);
 }
@@ -296,8 +297,8 @@ uint32_t GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const 
         planner_->clearEndpoint(costmap_->getCharMap(), potential_array_, goal_x_i, goal_y_i, 2);
     if(publish_potential_)
         publishPotential(potential_array_);
-
-    publishInscribedRadius();
+    if(publish_inscribed_)
+      publishInscribedRadius();
 
     if (found_legal) {
         //extract the plan
@@ -447,14 +448,14 @@ void GlobalPlanner::publishInscribedRadius() const
     marker.header.frame_id = costmap_ros_->getBaseFrameID();
     marker.header.stamp = ros::Time::now();
     marker.ns = "inscribed_radius";
-    marker.type = visualization_msgs::Marker::CYLINDER;
+    marker.type = visualization_msgs::Marker::LINE_STRIP;
     marker.action = visualization_msgs::Marker::ADD;
     marker.pose.orientation.w = 1.0;
-    marker.scale.x = 2.0 * inscribed_radius;
-    marker.scale.y = 2.0 * inscribed_radius;
-    marker.scale.z = 0.000001;
-    marker.color.g = 1.0;
-    marker.color.a = 0.2;
+    marker.points = costmap_2d::makeFootprintFromRadius(inscribed_radius);
+    marker.points.push_back(marker.points.front());  // close the polygon
+    marker.scale.x = 0.01;
+    marker.color.b = 1.0;
+    marker.color.a = 0.5;
     inscribed_pub_.publish(marker);
 }
 

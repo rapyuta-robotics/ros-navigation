@@ -203,6 +203,7 @@ class GlobalPlanner : public mbf_costmap_core::CostmapPlanner {
         ros::Publisher potential_pub_;
         int publish_scale_;
 
+        bool publish_inscribed_;
         ros::Publisher inscribed_pub_;
         void publishInscribedRadius() const;
 
