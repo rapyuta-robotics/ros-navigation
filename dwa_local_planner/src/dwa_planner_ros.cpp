@@ -92,7 +92,13 @@ namespace dwa_local_planner {
       limits.prune_plan = config.prune_plan;
       limits.trans_stopped_vel = config.trans_stopped_vel;
       limits.theta_stopped_vel = config.theta_stopped_vel;
+      limits.max_backward_dist = config.max_backward_dist;
       planner_util_.reconfigureCB(limits, config.restore_defaults);
+
+      if (config.min_vel_x < 0.0 && config.max_backward_dist == 0.0) {
+        ROS_WARN_ONCE_NAMED("dwa_local_planner", "Robot can move backward but maximum distance is 0, " \
+                                                 "so backward trajectories will be considered invalid");
+      }
 
       // update dwa specific configuration
       dp_->reconfigure(config);
@@ -190,6 +196,7 @@ namespace dwa_local_planner {
       // reset latching such that the latching doesn't apply even if the same goal is targeted again
       latchedStopRotateController_.resetLatching();
       resetBestEffort();
+      bw_motion_start_pose_.reset();
       return true;
     } else {
       return false;
@@ -429,6 +436,9 @@ namespace dwa_local_planner {
     }
 
     if (result == mbf_msgs::ExePathResult::SUCCESS) {
+      if (backwardDistanceExceeded(current_pose_, cmd_vel.twist.linear.x)) {
+        return mbf_msgs::ExePathResult::NO_VALID_CMD;
+      }
       publishGlobalPlan(transformed_plan_);
     } else {
       ROS_WARN_NAMED("dwa_local_planner", "DWA planner failed to produce path.");
@@ -439,5 +449,31 @@ namespace dwa_local_planner {
 
   }
 
+  bool DWAPlannerROS::backwardDistanceExceeded(const geometry_msgs::PoseStamped& robot_pose, double linear_speed) {
+    auto distance = [](const geometry_msgs::PoseStamped& pose1, const geometry_msgs::PoseStamped& pose2) {
+      return hypot(pose2.pose.position.x - pose1.pose.position.x, pose2.pose.position.y - pose1.pose.position.y);
+    };
 
+    // TODO: I can have a queue of speeds and only reset when all are >= 0
+    if ( ! bw_motion_start_pose_) {
+      if (linear_speed < 0.0) {  // TODO: should I use planner_util_.getCurrentLimits().min_vel_trans instead of 0?
+        bw_motion_start_pose_ = robot_pose;
+      }
+    }
+    else {
+      // we are already monitoring backward motion
+      double bw_traveled_dist = distance(bw_motion_start_pose_.value(), robot_pose);
+      if (linear_speed < 0.0) {
+        if (bw_traveled_dist > planner_util_.getCurrentLimits().max_backward_dist) {
+          ROS_WARN_NAMED("dwa_local_planner", "Robot moved backward for more than the allowed distance (%g m)",
+                         planner_util_.getCurrentLimits().max_backward_dist);
+          return true;
+        }
+      }
+      else if (linear_speed > 0.0) {
+        bw_motion_start_pose_.reset();
+      }
+    }
+    return false;
+  }
 };
