@@ -167,8 +167,6 @@ namespace dwa_local_planner {
 
       void resetBestEffort();
 
-      bool backwardDistanceExceeded(const geometry_msgs::PoseStamped& robot_pose, double linear_speed);
-
       tf2_ros::Buffer* tf_; ///< @brief Used for transforming point clouds
 
       // for visualisation, publishers of global and local plan
@@ -201,8 +199,6 @@ namespace dwa_local_planner {
       bool latched_inner_goal_;
       std::vector<geometry_msgs::PoseStamped> transformed_plan_;
       boost::optional<geometry_msgs::PoseStamped> outer_goal_entry_;
-
-      boost::optional<geometry_msgs::PoseStamped> bw_motion_start_pose_;
 
       // mutex to avoid reconfigure while we're scoring trajectories
       std::mutex config_mtx_;
