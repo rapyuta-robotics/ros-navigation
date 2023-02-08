@@ -267,11 +267,12 @@ namespace dwa_local_planner {
     path_align_costs_.setTargetPoses(global_plan_, global_pose);
 
     // costs for going away from path
-    path_costs_.setTargetPoses(global_plan_);
-    alignment_costs_.setTargetPoses(global_plan_);
+    const double xy_goal_tolerance = planner_util_->getCurrentLimits().xy_goal_tolerance;
+    path_costs_.setTargetPoses(global_plan_, xy_goal_tolerance);
+    alignment_costs_.setTargetPoses(global_plan_, xy_goal_tolerance);
 
     // costs for not going towards the local goal as much as possible
-    goal_costs_.setTargetPoses(global_plan_);
+    goal_costs_.setTargetPoses(global_plan_, xy_goal_tolerance);
 
     // alignment costs
     geometry_msgs::PoseStamped goal_pose = global_plan_.back();
@@ -324,7 +325,7 @@ namespace dwa_local_planner {
     front_global_plan.back().pose.position.y = front_global_plan.back().pose.position.y +
         std::abs(forward_point_distance) * sin_angle_to_goal;
 
-    goal_front_costs_.setTargetPoses(front_global_plan);
+    goal_front_costs_.setTargetPoses(front_global_plan, xy_goal_tolerance);
 
     if (sq_dist > max_backward_sq_dist_ && path_align_costs_.isTurningRequired()) {
       // enable turning penalty

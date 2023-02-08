@@ -211,12 +211,12 @@ namespace base_local_planner{
   //mark the point of the costmap as local goal where global_plan first leaves the area (or its last point)
   ExePathOutcome MapGrid::setLocalGoal(const costmap_2d::Costmap2D& costmap,
       const std::vector<geometry_msgs::PoseStamped>& global_plan,
-      const geometry_msgs::PoseStamped* const current_pose) {
+      const geometry_msgs::PoseStamped* const current_pose,
+      double xy_goal_tolerance) {
     sizeCheck(costmap.getSizeInCellsX(), costmap.getSizeInCellsY());
 
-    int local_goal_x = -1;
-    int local_goal_y = -1;
-    bool started_path = false;
+    int local_goal_idx = -1;
+    int last_non_obstacle_point_idx = -1;
 
     std::vector<geometry_msgs::PoseStamped> adjusted_global_plan;
     adjustPlanResolution(global_plan, adjusted_global_plan, costmap.getResolution());
@@ -227,7 +227,6 @@ namespace base_local_planner{
       return dx * dx + dy * dy;
     };
     bool reached_point_away_from_start = false;
-    bool local_goal_in_obstacle = true;
 
     // In the following loop, we select a point on the global path as the local goal based on which
     // we compute the "distance to the goal". The following criteria are chosen:
@@ -252,32 +251,49 @@ namespace base_local_planner{
       reached_point_away_from_start = reached_point_away_from_start || dist_squared_to_start(g_x, g_y) > 1;
       if (costmap.worldToMap(g_x, g_y, map_x, map_y) && costmap.getCost(map_x, map_y) != costmap_2d::NO_INFORMATION) {
         const bool in_obstacle = costmap.getCost(map_x, map_y) >= costmap_2d::INSCRIBED_INFLATED_OBSTACLE;
-        if (reached_point_away_from_start && in_obstacle && !local_goal_in_obstacle) {
+        if (reached_point_away_from_start && in_obstacle && local_goal_idx == last_non_obstacle_point_idx) {
           break;
         }
-        local_goal_x = map_x;
-        local_goal_y = map_y;
-        started_path = true;
-        local_goal_in_obstacle = in_obstacle;
+        local_goal_idx = i;
+        if (!in_obstacle) {
+          last_non_obstacle_point_idx = i;
+        }
       } else {
-        if (started_path) {
-          ROS_WARN_COND(local_goal_in_obstacle, "local goal in obstacle");
+        if (local_goal_idx >= 0) {
           break;
         }// else we might have a non pruned path, so we just continue
       }
     }
-    if (!started_path) {
+    if (local_goal_idx < 0) {
       ROS_ERROR("None of the points of the global plan were in the local costmap, global plan points too far from robot");
       return mbf_msgs::ExePathResult::OUT_OF_MAP;
     }
 
-    if (local_goal_in_obstacle) {
-      ROS_WARN("None of the points of the global plan sufficiently far away from the start were in free space");
-      return mbf_msgs::ExePathResult::BLOCKED_GOAL;
+    if (local_goal_idx != last_non_obstacle_point_idx) {
+      // local goal is in an obstacle -> check if the last non-obstacle point on the path is close enough
+      if (last_non_obstacle_point_idx < 0) {
+        ROS_WARN("None of the points of the global plan is in free space");
+        return mbf_msgs::ExePathResult::BLOCKED_GOAL;
+      }
+
+      const double dx = adjusted_global_plan[local_goal_idx].pose.position.x - adjusted_global_plan[last_non_obstacle_point_idx].pose.position.x;
+      const double dy = adjusted_global_plan[local_goal_idx].pose.position.y - adjusted_global_plan[last_non_obstacle_point_idx].pose.position.y;
+      const double dist = std::hypot(dx, dy);
+      if (dist > 0.5 * xy_goal_tolerance) {
+        ROS_WARN("None of the points of the global plan sufficiently far away from the start and close enough to the goal were in free space");
+        return mbf_msgs::ExePathResult::BLOCKED_GOAL;
+      }
+
+      // -> use the last non-obstacle point as the local goal
+      ROS_INFO_STREAM_THROTTLE(5, "goal is in an obstacle; falling back to an other point on the path " << dist << "[m] away from the goal");
+      local_goal_idx = last_non_obstacle_point_idx;
     }
 
     queue<MapCell*> path_dist_queue;
-    if (local_goal_x >= 0 && local_goal_y >= 0) {
+    if (local_goal_idx >= 0) {
+      unsigned int local_goal_x = -1;
+      unsigned int local_goal_y = -1;
+      costmap.worldToMap(adjusted_global_plan[local_goal_idx].pose.position.x, adjusted_global_plan[local_goal_idx].pose.position.y, local_goal_x, local_goal_y);
       MapCell& current = getCell(local_goal_x, local_goal_y);
       costmap.mapToWorld(local_goal_x, local_goal_y, goal_x_, goal_y_);
       current.target_dist = 0.0;

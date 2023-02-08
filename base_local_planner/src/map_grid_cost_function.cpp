@@ -44,6 +44,7 @@ MapGridCostFunction::MapGridCostFunction(costmap_2d::Costmap2D* costmap,
     double yshift,
     bool is_local_goal_function,
     CostAggregationType aggregationType) :
+    xy_goal_tolerance_(0),
     costmap_(costmap),
     map_(costmap->getSizeInCellsX(), costmap->getSizeInCellsY()),
     aggregationType_(aggregationType),
@@ -52,14 +53,15 @@ MapGridCostFunction::MapGridCostFunction(costmap_2d::Costmap2D* costmap,
     is_local_goal_function_(is_local_goal_function),
     stop_on_failure_(true) {}
 
-void MapGridCostFunction::setTargetPoses(std::vector<geometry_msgs::PoseStamped> target_poses) {
+void MapGridCostFunction::setTargetPoses(std::vector<geometry_msgs::PoseStamped> target_poses, double xy_goal_tolerance) {
   target_poses_ = target_poses;
+  xy_goal_tolerance_ = xy_goal_tolerance;
 }
 
 ExePathOutcome MapGridCostFunction::prepare(const geometry_msgs::PoseStamped& current_pose) {
   map_.resetPathDist();
 
-  return is_local_goal_function_ ? map_.setLocalGoal(*costmap_, target_poses_, &current_pose) : map_.setTargetCells(*costmap_, target_poses_);
+  return is_local_goal_function_ ? map_.setLocalGoal(*costmap_, target_poses_, &current_pose, xy_goal_tolerance_) : map_.setTargetCells(*costmap_, target_poses_);
 }
 
 double MapGridCostFunction::getCellCosts(unsigned int px, unsigned int py) {
