@@ -278,15 +278,43 @@ void StaticLayer::updateBounds(double robot_x, double robot_y, double robot_yaw,
 
   useExtraBounds(min_x, min_y, max_x, max_y);
 
-  double wx, wy;
+  geometry_msgs::TransformStamped transform;
+  try
+  {
+    transform = tf_->lookupTransform(global_frame_, map_frame_, ros::Time(0));
+  }
+  catch (tf2::TransformException ex)
+  {
+    ROS_ERROR("%s", ex.what());
+    return;
+  }
 
-  mapToWorld(x_, y_, wx, wy);
-  *min_x = std::min(wx, *min_x);
-  *min_y = std::min(wy, *min_y);
+  // 4 corners of the map in global_frame_
+  std::vector<geometry_msgs::Point> corners(4);
+  for (size_t i = 0; i < corners.size(); ++i)
+  {
+    geometry_msgs::Point p;
+    const double dx = i == 0 || i == 1 ? 0 : width_;
+    const double dy = i == 1 || i == 2 ? height_ : 0;
+    mapToWorld(x_ + dx, y_ + dy, p.x, p.y);
+    tf2::doTransform(p, corners[i], transform);
+  }
 
-  mapToWorld(x_ + width_, y_ + height_, wx, wy);
-  *max_x = std::max(wx, *max_x);
-  *max_y = std::max(wy, *max_y);
+  // bounding box
+  auto minmax =
+      std::minmax_element(corners.begin(), corners.end(), [](const auto& p1, const auto& p2) { return p1.x < p2.x; });
+  const double bb_min_x = minmax.first->x;
+  const double bb_max_x = minmax.second->x;
+  minmax =
+      std::minmax_element(corners.begin(), corners.end(), [](const auto& p1, const auto& p2) { return p1.y < p2.y; });
+  const double bb_min_y = minmax.first->y;
+  const double bb_max_y = minmax.second->y;
+
+  // set bounds
+  *min_x = std::min(*min_x, bb_min_x);
+  *min_y = std::min(*min_y, bb_min_y);
+  *max_x = std::max(*max_x, bb_max_x);
+  *max_y = std::max(*max_y, bb_max_y);
 
   has_updated_data_ = false;
 }
