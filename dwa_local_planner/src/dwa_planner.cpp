@@ -308,7 +308,7 @@ namespace dwa_local_planner {
     }
 
     // check if any path point close to the goal is reachable
-    const double goal_yaw = tf2::getYaw(global_pose.pose.orientation);
+    const double goal_yaw = tf2::getYaw(plan.back().pose.orientation);
     const double max_goal_deviation = std::max(0.0, limits.xy_goal_tolerance - limits.xy_min_goal_tolerance);
     bool reachable_goal_found = false;
     auto i = last_point_in_free_space;
@@ -331,7 +331,7 @@ namespace dwa_local_planner {
 
     if (i < 0) {
       // this seems unlikely, but needs to be handled
-      ROS_WARN_STREAM("The footprint is in collision for all path points");
+      ROS_WARN("The footprint is in collision for all path points");
       return mbf_msgs::ExePathResult::BLOCKED_PATH;
     }
 
