@@ -266,12 +266,52 @@ namespace dwa_local_planner {
     // search the path for a reachable goal
     const double dist_to_goal = mbf_utility::distance(global_pose, plan.back());
 
-    const double goal_yaw = tf2::getYaw(global_pose.pose.orientation);
+    // find furthest point along the path of which the corresponding cell is in free space
+    const costmap_2d::Costmap2D* const costmap = planner_util_->getCostmap();
+    int last_point_on_the_map = -1;
+    int last_point_in_free_space = -1;
+    for (unsigned int i = 0; i < plan.size(); ++i) {
+      double g_x = plan[i].pose.position.x;
+      double g_y = plan[i].pose.position.y;
+      unsigned int map_x, map_y;
+      if (!costmap->worldToMap(g_x, g_y, map_x, map_y)) {
+        // give up once a point within the map had been found
+        if (last_point_on_the_map >= 0) {
+          break;
+        }
+        continue;
+      }
+
+      last_point_on_the_map = i;
+      if (costmap->getCost(map_x, map_y) < costmap_2d::INSCRIBED_INFLATED_OBSTACLE) {
+        last_point_in_free_space = i;
+      }
+    }
+
+    // handle general errors
+    if (last_point_on_the_map == -1) {
+      ROS_ERROR("None of the points of the global plan were in the local costmap, global plan points too far from robot");
+      return mbf_msgs::ExePathResult::OUT_OF_MAP;
+    }
+
+    if (last_point_in_free_space == -1) {
+      ROS_ERROR("None of the points of the global plan were in free space");
+      return mbf_msgs::ExePathResult::BLOCKED_PATH;
+    }
+
+    const auto dist_to_last_free_point = mbf_utility::distance(global_pose, plan[last_point_in_free_space]);
     const auto limits = planner_util_->getCurrentLimits();
+    if (dist_to_last_free_point > limits.blocked_goal_approach_distance) {
+      // -> just crop the path to this point
+      plan.resize(last_point_in_free_space+1);
+      return mbf_msgs::ExePathResult::SUCCESS;
+    }
+
+    // check if any path point close to the goal is reachable
+    const double goal_yaw = tf2::getYaw(global_pose.pose.orientation);
     const double max_goal_deviation = std::max(0.0, limits.xy_goal_tolerance - limits.xy_min_goal_tolerance);
     bool reachable_goal_found = false;
-    bool footprint_on_any_path_point_completely_on_map = false;
-    auto i = static_cast<int>(plan.size()) - 1;
+    auto i = last_point_in_free_space;
     for (; i >= 0; --i) {
       const auto dist_to_goal = mbf_utility::distance(plan[i], plan.back());
       if (dist_to_goal > max_goal_deviation) {
@@ -279,28 +319,20 @@ namespace dwa_local_planner {
       }
       const auto footprint_cost = world_model_->footprintCost(plan[i].pose.position.x, plan[i].pose.position.y, goal_yaw, footprint_spec);
       reachable_goal_found = footprint_cost >= 0;
-      footprint_on_any_path_point_completely_on_map = footprint_cost != -3;
       if (reachable_goal_found) {
         break;
       }
     }
 
-    if (!footprint_on_any_path_point_completely_on_map) {
-      ROS_WARN_STREAM("Part of the footprint is in out of map for all path points");
-      return mbf_msgs::ExePathResult::OUT_OF_MAP;
+    if (!reachable_goal_found) {
+      ROS_WARN_STREAM("The footprint is in collision for all path points within " << max_goal_deviation << "[m] of the goal");
+      return mbf_msgs::ExePathResult::BLOCKED_GOAL;
     }
 
-    if (!reachable_goal_found) {
-      if (dist_to_goal < limits.blocked_goal_approach_distance) {
-        ROS_WARN_STREAM("The footprint is in collision for all path points within " << max_goal_deviation << "[m] of the goal");
-        return mbf_msgs::ExePathResult::BLOCKED_GOAL;
-      }
-
-      if (i < 0) {
-        // this seems unlikely, but needs to be handled
-        ROS_WARN_STREAM("The footprint is in collision for all path points");
-        return mbf_msgs::ExePathResult::BLOCKED_PATH;
-      }
+    if (i < 0) {
+      // this seems unlikely, but needs to be handled
+      ROS_WARN_STREAM("The footprint is in collision for all path points");
+      return mbf_msgs::ExePathResult::BLOCKED_PATH;
     }
 
     plan.resize(i+1);
