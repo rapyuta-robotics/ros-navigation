@@ -267,9 +267,8 @@ namespace dwa_local_planner {
     const double dist_to_goal = mbf_utility::distance(global_pose, plan.back());
 
     const double goal_yaw = tf2::getYaw(global_pose.pose.orientation);
-    const double xy_goal_tolerance = planner_util_->getCurrentLimits().xy_goal_tolerance;
-    const double min_tolerance_for_reaching_goal = 0.03;
-    const double max_goal_deviation = std::max(0.0, xy_goal_tolerance - min_tolerance_for_reaching_goal);
+    const auto limits = planner_util_->getCurrentLimits();
+    const double max_goal_deviation = std::max(0.0, limits.xy_goal_tolerance - limits.xy_min_goal_tolerance);
     bool reachable_goal_found = false;
     bool footprint_on_any_path_point_completely_on_map = false;
     auto i = static_cast<int>(plan.size()) - 1;
@@ -292,7 +291,7 @@ namespace dwa_local_planner {
     }
 
     if (!reachable_goal_found) {
-      if (dist_to_goal < 1) {
+      if (dist_to_goal < limits.blocked_goal_approach_distance) {
         ROS_WARN_STREAM("The footprint is in collision for all path points within " << max_goal_deviation << "[m] of the goal");
         return mbf_msgs::ExePathResult::BLOCKED_GOAL;
       }
