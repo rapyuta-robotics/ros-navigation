@@ -167,7 +167,7 @@ namespace dwa_local_planner {
 
     private:
       /**
-       * @brief crop a plan such that the last pose is a reachable (i.e. footprint not in collision)
+       * @brief crop a plan such that the last pose is reachable (i.e. footprint not in collision)
        * @param global_pose The robot's current pose
        * @param footprint_spec The robot's footprint
        * @param plan global plan that is being modified

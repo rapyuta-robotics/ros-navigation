@@ -381,7 +381,7 @@ namespace dwa_local_planner {
     const auto cos_angle_to_goal = cos(angle_to_goal);
     const auto sin_angle_to_goal = sin(angle_to_goal);
     const auto sq_dist = dist_to_goal * dist_to_goal;
-    if (sq_dist * sq_dist < MIN_GOAL_DIST_SQ) {
+    if (sq_dist < MIN_GOAL_DIST_SQ) {
       // when close to the goal, reduce forward_point_distance such that the robot can reach the goal pose
       // without its nose entering space considered as occupied by obstacles
       forward_point_distance = 0;
