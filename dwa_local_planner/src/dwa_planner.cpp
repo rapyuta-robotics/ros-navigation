@@ -301,7 +301,7 @@ namespace dwa_local_planner {
 
     const auto dist_to_last_free_point = mbf_utility::distance(global_pose, plan[last_point_in_free_space]);
     const auto limits = planner_util_->getCurrentLimits();
-    if (dist_to_last_free_point > limits.blocked_goal_approach_distance) {
+    if (dist_to_last_free_point > limits.goal_obstacle_approach_distance) {
       // -> just crop the path to this point
       plan.resize(last_point_in_free_space+1);
       return mbf_msgs::ExePathResult::SUCCESS;

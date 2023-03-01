@@ -62,7 +62,7 @@ public:
   double inner_xy_goal_tolerance;
   double xy_min_goal_tolerance;
   double yaw_goal_tolerance;
-  double blocked_goal_approach_distance;
+  double goal_obstacle_approach_distance;
   double trans_stopped_vel;
   double theta_stopped_vel;
   double max_backward_dist;
@@ -88,7 +88,7 @@ public:
       double ninner_xy_goal_tolerance,
       double nxy_min_goal_tolerance,
       double nyaw_goal_tolerance,
-      double nblocked_goal_approach_distance,
+      double ngoal_obstacle_approach_distance,
       bool   nprune_plan = true,
       double ntrans_stopped_vel = 0.1,
       double ntheta_stopped_vel = 0.1,
@@ -111,7 +111,7 @@ public:
         inner_xy_goal_tolerance(ninner_xy_goal_tolerance),
         xy_min_goal_tolerance(nxy_min_goal_tolerance),
         yaw_goal_tolerance(nyaw_goal_tolerance),
-        blocked_goal_approach_distance(nblocked_goal_approach_distance),
+        goal_obstacle_approach_distance(ngoal_obstacle_approach_distance),
         trans_stopped_vel(ntrans_stopped_vel),
         theta_stopped_vel(ntheta_stopped_vel),
         max_backward_dist(nmax_backward_dist){}

@@ -90,7 +90,7 @@ namespace dwa_local_planner {
       _latest_limits.inner_xy_goal_tolerance = config.inner_xy_goal_tolerance;
       _latest_limits.xy_min_goal_tolerance = config.xy_min_goal_tolerance;
       _latest_limits.yaw_goal_tolerance = config.yaw_goal_tolerance;
-      _latest_limits.blocked_goal_approach_distance = config.blocked_goal_approach_distance;
+      _latest_limits.goal_obstacle_approach_distance = config.goal_obstacle_approach_distance;
       _latest_limits.prune_plan = config.prune_plan;
       _latest_limits.trans_stopped_vel = config.trans_stopped_vel;
       _latest_limits.theta_stopped_vel = config.theta_stopped_vel;
