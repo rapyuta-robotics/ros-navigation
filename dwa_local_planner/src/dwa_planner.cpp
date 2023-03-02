@@ -302,12 +302,17 @@ namespace dwa_local_planner {
     const auto dist_to_last_free_point = mbf_utility::distance(global_pose, plan[last_point_in_free_space]);
     const auto limits = planner_util_->getCurrentLimits();
     if (dist_to_last_free_point > limits.goal_obstacle_approach_distance) {
-      // -> just crop the path to this point
+      // If the obstacle blocking the goal is further than goal_obstacle_approach_distance,
+      // just target the last free point instead, by cropping the path to that point.
+
+      // The reasoning for going towards the goal even though it is blocked by an obstacle according to the costmap
+      // is to ensure that the goal is actually still blocked (i.e. not because of some left-over obstacle from some earlier time)
       plan.resize(last_point_in_free_space+1);
       return mbf_msgs::ExePathResult::SUCCESS;
     }
 
-    // check if any path point close to the goal is reachable
+    // goal / obstacle blocking the goal is within goal_obstacle_approach_distance
+    // -> check if any path point close to the goal is reachable (i.e. can fit robot footprint without colliding)
     const double goal_yaw = tf2::getYaw(plan.back().pose.orientation);
     const double max_goal_deviation = std::max(0.0, limits.xy_goal_tolerance - limits.xy_min_goal_tolerance);
     bool reachable_goal_found = false;
