@@ -37,7 +37,7 @@ def add_generic_localplanner_params(gen):
 
     gen.add("xy_goal_tolerance", double_t, 0, "Within what maximum distance we consider the robot to be in goal", 0.1)
     gen.add("inner_xy_goal_tolerance", double_t, 0, "Best effort distance for the robot to reach the goal", 0.1)
-    gen.add("xy_min_goal_tolerance", double_t, 0, "Minimum tolerance needed to reliably reach a goal; if the goal is within an obstacle, the goal can be displaced by (xy_goal_tolerance - xy_min_goal_tolerance)", 0.1)
+    gen.add("xy_min_goal_tolerance", double_t, 0, "Minimum tolerance needed to reliably reach a goal; if the goal is within an obstacle, the goal can be displaced by (xy_goal_tolerance - xy_min_goal_tolerance)", 0.01)
     gen.add("yaw_goal_tolerance", double_t, 0, "Within what maximum angle difference we consider the robot to face goal direction", 0.1)
 
     gen.add("goal_obstacle_approach_distance", double_t, 0, "In case the goal is blocked, move towards it until the obstacle blocking the goal is within this distance", 1.0)
