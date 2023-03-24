@@ -142,7 +142,7 @@ void ClearCostmapRecovery::clear(costmap_2d::Costmap2DROS* costmap){
   double x = pose.pose.position.x;
   double y = pose.pose.position.y;
 
-  std::unordered_set<std::string> cleared_layers;
+  std::unordered_set<std::string> found_layers;
 
   for (std::vector<boost::shared_ptr<costmap_2d::Layer> >::iterator pluginp = plugins->begin(); pluginp != plugins->end(); ++pluginp) {
     boost::shared_ptr<costmap_2d::Layer> plugin = *pluginp;
@@ -154,7 +154,7 @@ void ClearCostmapRecovery::clear(costmap_2d::Costmap2DROS* costmap){
 
     if(clearable_layers_.count(name)!=0){
 
-      cleared_layers.insert(name);
+      found_layers.insert(name);
 
       // check if the value is convertable
       if(!dynamic_cast<costmap_2d::CostmapLayer*>(plugin.get())){
@@ -169,9 +169,7 @@ void ClearCostmapRecovery::clear(costmap_2d::Costmap2DROS* costmap){
   }
 
   for (const auto& layer : clearable_layers_) {
-    if (!cleared_layers.count(layer)) {
-      ROS_WARN_STREAM("Cannot clear layer " << layer << " because it does not exist");
-    }
+    ROS_WARN_STREAM_COND(!found_layers.count(layer), "Cannot clear layer " << layer << " because it does not exist");
   }
 }
 
