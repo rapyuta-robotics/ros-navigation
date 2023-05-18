@@ -20,16 +20,18 @@ void CostmapLayer::matchSize()
 
 void CostmapLayer::clearArea(int start_x, int start_y, int end_x, int end_y, bool invert_area)
 {
-  unsigned char* grid = getCharMap();
-  for(int x=0; x<(int)getSizeInCellsX(); x++){
-    bool xrange = x>start_x && x<end_x;
-
-    for(int y=0; y<(int)getSizeInCellsY(); y++){
-      if((xrange && y>start_y && y<end_y)!=invert_area)
-        continue;
-      int index = getIndex(x,y);
-      if(grid[index]!=NO_INFORMATION){
-        grid[index] = NO_INFORMATION;
+  std::vector<unsigned char*> grids = getTimedCharMaps();
+  for (auto grid : grids)
+  {
+    for(int x=0; x<(int)getSizeInCellsX(); x++){
+      bool xrange = x>start_x && x<end_x;
+      for(int y=0; y<(int)getSizeInCellsY(); y++){
+        if((xrange && y>start_y && y<end_y)!=invert_area)
+          continue;
+        int index = getIndex(x,y);
+        if(grid[index]!=NO_INFORMATION){
+          grid[index] = NO_INFORMATION;
+        }
       }
     }
   }
@@ -65,23 +67,27 @@ void CostmapLayer::updateWithMax(costmap_2d::Costmap2D& master_grid, int min_i, 
   if (!enabled_)
     return;
 
-  unsigned char* master_array = master_grid.getCharMap();
+  std::vector<unsigned char*> master_arrays = master_grid.getTimedCharMaps();
   unsigned int span = master_grid.getSizeInCellsX();
 
-  for (int j = min_j; j < max_j; j++)
+  for(unsigned char* master_array : master_arrays)
   {
-    unsigned int it = j * span + min_i;
-    for (int i = min_i; i < max_i; i++)
+    for (int j = min_j; j < max_j; j++)
     {
-      if (costmap_[it] == NO_INFORMATION){
-        it++;
-        continue;
-      }
+      unsigned int it = j * span + min_i;
+      for (int i = min_i; i < max_i; i++)
+      {
 
-      unsigned char old_cost = master_array[it];
-      if (old_cost == NO_INFORMATION || old_cost < costmap_[it])
-        master_array[it] = costmap_[it];
-      it++;
+        if (costmap_[it] == NO_INFORMATION){
+          it++;
+          continue;
+        }
+
+        unsigned char old_cost = master_array[it];
+        if (old_cost == NO_INFORMATION || old_cost < costmap_[it])
+          master_array[it] = costmap_[it];
+        it++;
+      }
     }
   }
 }
@@ -91,16 +97,19 @@ void CostmapLayer::updateWithTrueOverwrite(costmap_2d::Costmap2D& master_grid, i
 {
   if (!enabled_)
     return;
-  unsigned char* master = master_grid.getCharMap();
+  std::vector<unsigned char*> masters = master_grid.getTimedCharMaps();
   unsigned int span = master_grid.getSizeInCellsX();
-
-  for (int j = min_j; j < max_j; j++)
+  
+  for(unsigned char* master : masters)
   {
-    unsigned int it = span*j+min_i;
-    for (int i = min_i; i < max_i; i++)
+    for (int j = min_j; j < max_j; j++)
     {
-      master[it] = costmap_[it];
-      it++;
+      unsigned int it = span*j+min_i;
+      for (int i = min_i; i < max_i; i++)
+      {
+        master[it] = costmap_[it];
+        it++;
+      }
     }
   }
 }
@@ -109,17 +118,19 @@ void CostmapLayer::updateWithOverwrite(costmap_2d::Costmap2D& master_grid, int m
 {
   if (!enabled_)
     return;
-  unsigned char* master = master_grid.getCharMap();
+  std::vector<unsigned char*> masters = master_grid.getTimedCharMaps();
   unsigned int span = master_grid.getSizeInCellsX();
-
-  for (int j = min_j; j < max_j; j++)
+  for(unsigned char* master : masters)
   {
-    unsigned int it = span*j+min_i;
-    for (int i = min_i; i < max_i; i++)
+    for (int j = min_j; j < max_j; j++)
     {
-      if (costmap_[it] != NO_INFORMATION)
-        master[it] = costmap_[it];
-      it++;
+      unsigned int it = span*j+min_i;
+      for (int i = min_i; i < max_i; i++)
+      {
+        if (costmap_[it] != NO_INFORMATION)
+          master[it] = costmap_[it];
+        it++;
+      }
     }
   }
 }
@@ -128,31 +139,33 @@ void CostmapLayer::updateWithAddition(costmap_2d::Costmap2D& master_grid, int mi
 {
   if (!enabled_)
     return;
-  unsigned char* master_array = master_grid.getCharMap();
+  std::vector<unsigned char*> master_arrays = master_grid.getTimedCharMaps();
   unsigned int span = master_grid.getSizeInCellsX();
-
-  for (int j = min_j; j < max_j; j++)
+  for(unsigned char* master_array : master_arrays)
   {
-    unsigned int it = j * span + min_i;
-    for (int i = min_i; i < max_i; i++)
+    for (int j = min_j; j < max_j; j++)
     {
-      if (costmap_[it] == NO_INFORMATION){
-        it++;
-        continue;
-      }
-
-      unsigned char old_cost = master_array[it];
-      if (old_cost == NO_INFORMATION)
-        master_array[it] = costmap_[it];
-      else
+      unsigned int it = j * span + min_i;
+      for (int i = min_i; i < max_i; i++)
       {
-        int sum = old_cost + costmap_[it];
-        if (sum >= costmap_2d::INSCRIBED_INFLATED_OBSTACLE)
-            master_array[it] = costmap_2d::INSCRIBED_INFLATED_OBSTACLE - 1;
+        if (costmap_[it] == NO_INFORMATION){
+          it++;
+          continue;
+        }
+
+        unsigned char old_cost = master_array[it];
+        if (old_cost == NO_INFORMATION)
+          master_array[it] = costmap_[it];
         else
-            master_array[it] = sum;
+        {
+          int sum = old_cost + costmap_[it];
+          if (sum >= costmap_2d::INSCRIBED_INFLATED_OBSTACLE)
+              master_array[it] = costmap_2d::INSCRIBED_INFLATED_OBSTACLE - 1;
+          else
+              master_array[it] = sum;
+        }
+        it++;
       }
-      it++;
     }
   }
 }

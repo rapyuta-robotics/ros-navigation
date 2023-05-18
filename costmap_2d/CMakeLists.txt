@@ -21,6 +21,7 @@ find_package(catkin REQUIRED
             tf2_sensor_msgs
             visualization_msgs
             voxel_grid
+            backward_ros
         )
 
 find_package(Eigen3 REQUIRED)

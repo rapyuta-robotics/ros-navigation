@@ -114,6 +114,11 @@ public:
    * @return The cost of the cell
    */
   unsigned char getCost(unsigned int mx, unsigned int my) const;
+  
+  unsigned char getCost(unsigned int mx, unsigned int my, double t) const
+  {
+    return getCost(mx, my);
+  }
 
   /**
    * @brief  Set the cost of a cell in the costmap
@@ -122,6 +127,11 @@ public:
    * @param cost The cost to set the cell to
    */
   void setCost(unsigned int mx, unsigned int my, unsigned char cost);
+  void setCost(unsigned int mx, unsigned int my, unsigned char cost, double t)
+  {
+    setCost(mx, my, cost);
+  }
+
 
   /**
    * @brief  Convert from map coordinates to world coordinates
@@ -131,6 +141,12 @@ public:
    * @param  wy Will be set to the associated world y coordinate
    */
   void mapToWorld(unsigned int mx, unsigned int my, double& wx, double& wy) const;
+  
+  void mapToWorld(unsigned int mx, unsigned int my, double& wx, double& wy, double t) const
+  {
+    mapToWorld(mx, my, wx, wy);
+  }
+
 
   /**
    * @brief  Convert from world coordinates to map coordinates
@@ -141,6 +157,10 @@ public:
    * @return True if the conversion was successful (legal bounds) false otherwise
    */
   bool worldToMap(double wx, double wy, unsigned int& mx, unsigned int& my) const;
+  bool worldToMap(double wx, double wy, unsigned int& mx, unsigned int& my, double t) const
+  {
+    return worldToMap(wx, wy, mx, my);
+  }
 
   /**
    * @brief  Convert from world coordinates to map coordinates without checking for legal bounds
@@ -190,6 +210,9 @@ public:
    * @return A pointer to the underlying unsigned char array storing cost values
    */
   unsigned char* getCharMap() const;
+
+  std::vector<unsigned char*> getTimedCharMaps() const;
+
 
   /**
    * @brief  Accessor for the x size of the costmap in cells
@@ -425,6 +448,9 @@ protected:
   double resolution_;
   double origin_x_;
   double origin_y_;
+  double prediction_time_ = 1.2;  // Make sim time
+  double timestep_ = 0.2;   // should be sim granularity?
+  std::vector<unsigned char*> timed_costmaps_;
   unsigned char* costmap_;
   unsigned char default_value_;
 
