@@ -127,6 +127,7 @@ public:
    * @param cost The cost to set the cell to
    */
   void setCost(unsigned int mx, unsigned int my, unsigned char cost);
+  
   void setCost(unsigned int mx, unsigned int my, unsigned char cost, double t)
   {
     setCost(mx, my, cost);
@@ -141,12 +142,6 @@ public:
    * @param  wy Will be set to the associated world y coordinate
    */
   void mapToWorld(unsigned int mx, unsigned int my, double& wx, double& wy) const;
-  
-  void mapToWorld(unsigned int mx, unsigned int my, double& wx, double& wy, double t) const
-  {
-    mapToWorld(mx, my, wx, wy);
-  }
-
 
   /**
    * @brief  Convert from world coordinates to map coordinates
@@ -157,10 +152,6 @@ public:
    * @return True if the conversion was successful (legal bounds) false otherwise
    */
   bool worldToMap(double wx, double wy, unsigned int& mx, unsigned int& my) const;
-  bool worldToMap(double wx, double wy, unsigned int& mx, unsigned int& my, double t) const
-  {
-    return worldToMap(wx, wy, mx, my);
-  }
 
   /**
    * @brief  Convert from world coordinates to map coordinates without checking for legal bounds

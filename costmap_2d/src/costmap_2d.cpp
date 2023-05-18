@@ -158,7 +158,7 @@ bool Costmap2D::copyCostmapWindow(const Costmap2D& map, double win_origin_x, dou
   // copy the window of the static map and the costmap that we're taking
   for (unsigned char* costmap : timed_costmaps_)
   {
-    copyMapRegion(map.timed_costmaps_.front(), lower_left_x, lower_left_y, map.size_x_, costmap, 0, 0, size_x_, size_x_, size_y_);
+    copyMapRegion(map.costmap_, lower_left_x, lower_left_y, map.size_x_, costmap, 0, 0, size_x_, size_x_, size_y_);
   }
   
   return true;
