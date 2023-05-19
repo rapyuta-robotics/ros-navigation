@@ -204,6 +204,12 @@ public:
 
   std::vector<unsigned char*> getTimedCharMaps() const;
 
+  double getTimeStep() const
+  {
+    return timestep_;
+  }
+
+
 
   /**
    * @brief  Accessor for the x size of the costmap in cells
