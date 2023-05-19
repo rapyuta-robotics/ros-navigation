@@ -122,7 +122,7 @@ namespace dwa_local_planner {
 
   DWAPlanner::DWAPlanner(std::string name, base_local_planner::LocalPlannerUtil *planner_util) :
       planner_util_(planner_util),
-      obstacle_costs_(planner_util->getCostmap()),
+      obstacle_costs_(planner_util->getTimedCostmaps()),
       path_costs_(planner_util->getCostmap()),
       goal_costs_(planner_util->getCostmap(), 0.0, 0.0, true),
       goal_front_costs_(planner_util->getCostmap(), 0.0, 0.0, true),
@@ -502,8 +502,8 @@ namespace dwa_local_planner {
         unsigned int num_points = 0;
         for(std::vector<base_local_planner::Trajectory>::iterator t=all_explored.begin(); t != all_explored.end(); ++t)
         {
-            if (t->cost_<0)
-              continue;
+            // if (t->cost_<0)
+            //   continue;
             num_points += t->getPointsSize();
         }
 
@@ -511,8 +511,8 @@ namespace dwa_local_planner {
         sensor_msgs::PointCloud2Iterator<float> iter_x(traj_cloud, "x");
         for(std::vector<base_local_planner::Trajectory>::iterator t=all_explored.begin(); t != all_explored.end(); ++t)
         {
-            if(t->cost_<0)
-                continue;
+            // if(t->cost_<0)
+            //     continue;
             // Fill out the plan
             for(unsigned int i = 0; i < t->getPointsSize(); ++i) {
                 double p_x, p_y, p_th;

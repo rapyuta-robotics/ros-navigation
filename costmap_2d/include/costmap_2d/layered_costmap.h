@@ -94,6 +94,8 @@ public:
     return &costmap_;
   }
 
+  std::vector<Costmap2D>* getTimedCostmaps();
+
   bool isRolling()
   {
     return rolling_window_;
@@ -154,7 +156,13 @@ public:
    * This is updated by setFootprint(). */
   double getInscribedRadius() { return inscribed_radius_; }
 
+
+  // unsigned char getCost(unsigned int mx, unsigned int my, double t) const;
+
+
+
 private:
+  std::vector<Costmap2D> timed_costmaps_;
   Costmap2D costmap_;
   std::string global_frame_;
 
@@ -162,6 +170,7 @@ private:
 
   bool current_;
   double minx_, miny_, maxx_, maxy_;
+  double timestep_, prediction_time_;
   unsigned int bx0_, bxn_, by0_, byn_;
 
   std::vector<boost::shared_ptr<Layer> > plugins_;

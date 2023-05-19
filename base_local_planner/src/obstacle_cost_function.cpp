@@ -44,11 +44,12 @@
 
 namespace base_local_planner {
 
-ObstacleCostFunction::ObstacleCostFunction(costmap_2d::Costmap2D* costmap)
-    : costmap_(costmap), sum_scores_(false), sideward_inflation_scale_(1.0) {
-  if (costmap != NULL) {
-    world_model_ = new base_local_planner::CostmapModel(*costmap_);
-  }
+ObstacleCostFunction::ObstacleCostFunction(std::vector<costmap_2d::Costmap2D>* timed_costmaps)
+    : timed_costmaps_(timed_costmaps), costmap_(), sum_scores_(false), sideward_inflation_scale_(1.0) {
+  // if (costmap_ != NULL) {
+  //   world_model_ = new base_local_planner::CostmapModel(*costmap_);
+  //   // Check what this is being used for!!!!!!
+  // }
 
   ros::NodeHandle pnh("~");
   sideward_inflation_scale_sub_ = pnh.subscribe<std_msgs::Float32>("sideward_inflation_scale", 1, [&](const std_msgs::Float32ConstPtr& msg){
@@ -103,6 +104,7 @@ ExePathOutcome ObstacleCostFunction::prepare(const geometry_msgs::PoseStamped& c
 
 double ObstacleCostFunction::scoreTrajectory(Trajectory &traj) {
   double cost = 0;
+
   double px, py, pth;
   if (footprint_spec_.size() == 0) {
     // Bug, should never happen
@@ -119,7 +121,7 @@ double ObstacleCostFunction::scoreTrajectory(Trajectory &traj) {
     traj.getPoint(i, px, py, pth);
     double f_cost = footprintCost(px, py, pth,
         scaled_footprint,
-        costmap_, world_model_);
+        timed_costmaps_, world_model_, i * traj.time_delta_); 
 
     if(f_cost < 0){
         return f_cost;
@@ -153,7 +155,10 @@ double ObstacleCostFunction::footprintCost (
 
   //check if the footprint is legal
   // TODO: Cache inscribed radius
-  double footprint_cost = world_model->footprintCost(x, y, th, scaled_footprint);
+
+  base_local_planner::CostmapModel world_model_ = *costmap; // create new world model??
+
+  double footprint_cost = world_model_.footprintCost(x, y, th, scaled_footprint);
 
   if (footprint_cost < 0) {
     return -6.0;
@@ -173,5 +178,26 @@ double ObstacleCostFunction::footprintCost (
 
   return occ_cost;
 }
+
+double ObstacleCostFunction::footprintCost (
+    const double& x,
+    const double& y,
+    const double& th,
+    const std::vector<geometry_msgs::Point>& scaled_footprint,
+    std::vector<costmap_2d::Costmap2D>* timed_costmaps,
+    base_local_planner::WorldModel* world_model,
+    double t) 
+    {
+      double timestep = 0.3;   // MAKE PARAMETER OR PASS FROM LAYERED COSTMAP (hard coded for testing)
+      int n = std::min((int)(t/timestep), (int)timed_costmaps->size()-1);
+      double cost = footprintCost(x, y, th, scaled_footprint, (&(*timed_costmaps)[n]), world_model);
+
+      if (cost > 240 && t > 0.4)
+      {
+        ROS_INFO_STREAM("<- put breakpoint here for debugging");
+      }
+      return cost;
+    }
+
 
 } /* namespace base_local_planner */
