@@ -128,8 +128,10 @@ namespace dwa_local_planner {
 
       // make sure to update the costmap we'll use for this cycle
       costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
+      std::vector<costmap_2d::Costmap2D>* timed_costmaps = costmap_ros_->getTimedCostmaps();
 
-      planner_util_.initialize(tf, costmap, costmap_ros_->getGlobalFrameID());
+
+      planner_util_.initialize(tf, costmap, timed_costmaps, costmap_ros_->getGlobalFrameID());
 
       //create the actual planner that we'll use.. it'll configure itself from the parameter server
       dp_ = boost::shared_ptr<DWAPlanner>(new DWAPlanner(name, &planner_util_));
@@ -394,6 +396,7 @@ namespace dwa_local_planner {
   uint32_t DWAPlannerROS::computeVelocityCommands(const geometry_msgs::PoseStamped& pose,
                                                   const geometry_msgs::TwistStamped& velocity,
                                                   geometry_msgs::TwistStamped& cmd_vel, std::string& message) {
+    
     // dispatches to either dwa sampling control or stop and rotate control, depending on whether we have been close enough to goal
     if ( ! costmap_ros_->getRobotPose(current_pose_)) {
       message = "Could not get robot pose";

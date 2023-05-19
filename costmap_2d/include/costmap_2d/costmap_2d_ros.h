@@ -152,6 +152,11 @@ public:
       return layered_costmap_->getCostmap();
     }
 
+  std::vector<Costmap2D>* getTimedCostmaps() const
+    {
+      return layered_costmap_->getTimedCostmaps();
+    }
+
   /**
    * @brief  Returns the global frame of the costmap
    * @return The global frame of the costmap

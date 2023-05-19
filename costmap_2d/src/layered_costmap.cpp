@@ -49,6 +49,8 @@ namespace costmap_2d
 
 LayeredCostmap::LayeredCostmap(std::string global_frame, bool rolling_window, bool track_unknown) :
     costmap_(),
+    timestep_(0.3),
+    prediction_time_(1.2),
     global_frame_(global_frame),
     rolling_window_(rolling_window),
     current_(false),
@@ -64,6 +66,7 @@ LayeredCostmap::LayeredCostmap(std::string global_frame, bool rolling_window, bo
     size_locked_(false),
     circumscribed_radius_(1.0),
     inscribed_radius_(0.1)
+
 {
   if (track_unknown)
     costmap_.setDefaultValue(NO_INFORMATION);
@@ -96,9 +99,9 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
 {
   // Lock for the remainder of this function, some plugins (e.g. VoxelLayer)
   // implement thread unsafe updateBounds() functions.
-  boost::unique_lock<Costmap2D::mutex_t> lock(*(costmap_.getMutex()));
+  boost::unique_lock<Costmap2D::mutex_t> lock(*(costmap_.getMutex()));  // Change to create new costmap_ object instead??
 
-  // if we're using a rolling buffer costmap... we need to update the origin using the robot's position
+  // if we're using a rolling buffer costmap_... we need to update the origin using the robot's position
   if (rolling_window_)
   {
     double new_origin_x = robot_x - costmap_.getSizeInMetersX() / 2;
@@ -112,54 +115,63 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
   minx_ = miny_ = 1e30;
   maxx_ = maxy_ = -1e30;
 
-  for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
-       ++plugin)
+  timed_costmaps_.clear();
+
+  // Create new costmap_ in this loop and add to costmap_ array?
+  for (double t = 0; t <= prediction_time_; t += timestep_)
   {
-    if(!(*plugin)->isEnabled())
-      continue;
-    double prev_minx = minx_;
-    double prev_miny = miny_;
-    double prev_maxx = maxx_;
-    double prev_maxy = maxy_;
-    (*plugin)->updateBounds(robot_x, robot_y, robot_yaw, &minx_, &miny_, &maxx_, &maxy_);
-    if (minx_ > prev_minx || miny_ > prev_miny || maxx_ < prev_maxx || maxy_ < prev_maxy)
+    // Costmap2D costmap_ = costmap_;
+    for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
+        ++plugin)
     {
-      ROS_WARN_THROTTLE(1.0, "Illegal bounds change, was [tl: (%f, %f), br: (%f, %f)], but "
-                        "is now [tl: (%f, %f), br: (%f, %f)]. The offending layer is %s",
-                        prev_minx, prev_miny, prev_maxx , prev_maxy,
-                        minx_, miny_, maxx_ , maxy_,
-                        (*plugin)->getName().c_str());
+      if(!(*plugin)->isEnabled())
+        continue;
+      double prev_minx = minx_;
+      double prev_miny = miny_;
+      double prev_maxx = maxx_;
+      double prev_maxy = maxy_;
+      (*plugin)->updateBounds(robot_x, robot_y, robot_yaw, &minx_, &miny_, &maxx_, &maxy_, t);  // Add time here ????
+      if (minx_ > prev_minx || miny_ > prev_miny || maxx_ < prev_maxx || maxy_ < prev_maxy)
+      {
+        ROS_WARN_THROTTLE(1.0, "Illegal bounds change, was [tl: (%f, %f), br: (%f, %f)], but "
+                          "is now [tl: (%f, %f), br: (%f, %f)]. The offending layer is %s",
+                          prev_minx, prev_miny, prev_maxx , prev_maxy,
+                          minx_, miny_, maxx_ , maxy_,
+                          (*plugin)->getName().c_str());
+      }
     }
+
+    int x0, xn, y0, yn;
+    costmap_.worldToMapEnforceBounds(minx_, miny_, x0, y0);   
+    costmap_.worldToMapEnforceBounds(maxx_, maxy_, xn, yn);
+
+    x0 = std::max(0, x0);
+    xn = std::min(int(costmap_.getSizeInCellsX()), xn + 1);
+    y0 = std::max(0, y0);
+    yn = std::min(int(costmap_.getSizeInCellsY()), yn + 1);
+
+    ROS_DEBUG("Updating area x: [%d, %d] y: [%d, %d]", x0, xn, y0, yn);
+
+    if (xn < x0 || yn < y0)
+      return;
+
+    costmap_.resetMap(x0, y0, xn, yn);
+    for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
+        ++plugin)
+    {
+      if((*plugin)->isEnabled())
+        (*plugin)->updateCosts(costmap_, x0, y0, xn, yn, t); // Add time here
+    }
+
+    bx0_ = x0;
+    bxn_ = xn;
+    by0_ = y0;
+    byn_ = yn;
+
+    initialized_ = true;
+    timed_costmaps_.emplace_back(costmap_);
   }
-
-  int x0, xn, y0, yn;
-  costmap_.worldToMapEnforceBounds(minx_, miny_, x0, y0);
-  costmap_.worldToMapEnforceBounds(maxx_, maxy_, xn, yn);
-
-  x0 = std::max(0, x0);
-  xn = std::min(int(costmap_.getSizeInCellsX()), xn + 1);
-  y0 = std::max(0, y0);
-  yn = std::min(int(costmap_.getSizeInCellsY()), yn + 1);
-
-  ROS_DEBUG("Updating area x: [%d, %d] y: [%d, %d]", x0, xn, y0, yn);
-
-  if (xn < x0 || yn < y0)
-    return;
-
-  costmap_.resetMap(x0, y0, xn, yn);
-  for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
-       ++plugin)
-  {
-    if((*plugin)->isEnabled())
-      (*plugin)->updateCosts(costmap_, x0, y0, xn, yn);
-  }
-
-  bx0_ = x0;
-  bxn_ = xn;
-  by0_ = y0;
-  byn_ = yn;
-
-  initialized_ = true;
+  costmap_ = timed_costmaps_.front();
 }
 
 bool LayeredCostmap::isCurrent()
@@ -173,6 +185,13 @@ bool LayeredCostmap::isCurrent()
   }
   return current_;
 }
+
+
+std::vector<Costmap2D>* LayeredCostmap::getTimedCostmaps()
+  {
+    return &timed_costmaps_;
+  }
+
 
 void LayeredCostmap::setFootprint(const std::vector<geometry_msgs::Point>& footprint_spec)
 {
