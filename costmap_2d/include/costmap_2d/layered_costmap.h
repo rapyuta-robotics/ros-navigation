@@ -89,15 +89,9 @@ public:
 
   bool isCurrent();
 
-  Costmap2D* getCostmap()
-  {
-    return &costmap_;
-  }
-
-  std::vector<Costmap2D> getTimedCostmaps();
+  Costmap2D* getCostmap(double t = 0.0);
 
   double getTimestep();
-
 
   bool isRolling()
   {
@@ -106,7 +100,7 @@ public:
 
   bool isTrackingUnknown()
   {
-    return costmap_.getDefaultValue() == costmap_2d::NO_INFORMATION;
+    return getCostmap()->getDefaultValue() == costmap_2d::NO_INFORMATION;
   }
 
   std::vector<boost::shared_ptr<Layer> >* getPlugins()
@@ -166,7 +160,6 @@ public:
 
 private:
   std::vector<Costmap2D> timed_costmaps_;
-  Costmap2D costmap_;
   std::string global_frame_;
 
   bool rolling_window_;  /// < @brief Whether or not the costmap should roll with the robot
