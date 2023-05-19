@@ -122,7 +122,7 @@ namespace dwa_local_planner {
 
   DWAPlanner::DWAPlanner(std::string name, base_local_planner::LocalPlannerUtil *planner_util) :
       planner_util_(planner_util),
-      obstacle_costs_(planner_util->getTimedCostmaps()),
+      obstacle_costs_(planner_util->getLayeredCostmap()),
       path_costs_(planner_util->getCostmap()),
       goal_costs_(planner_util->getCostmap(), 0.0, 0.0, true),
       goal_front_costs_(planner_util->getCostmap(), 0.0, 0.0, true),

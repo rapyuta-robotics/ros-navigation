@@ -187,9 +187,14 @@ bool LayeredCostmap::isCurrent()
 }
 
 
-std::vector<Costmap2D>* LayeredCostmap::getTimedCostmaps()
+std::vector<Costmap2D> LayeredCostmap::getTimedCostmaps()
   {
-    return &timed_costmaps_;
+    return timed_costmaps_;
+  }
+
+double LayeredCostmap::getTimestep()
+  {
+    return timestep_;
   }
 
 

@@ -42,6 +42,8 @@
 
 #include <base_local_planner/costmap_model.h>
 #include <costmap_2d/costmap_2d.h>
+#include <costmap_2d/layered_costmap.h>
+
 
 namespace base_local_planner {
 
@@ -53,7 +55,7 @@ namespace base_local_planner {
 class ObstacleCostFunction : public TrajectoryCostFunction {
 
 public:
-  ObstacleCostFunction(std::vector<costmap_2d::Costmap2D>* timed_costmaps);
+  ObstacleCostFunction(costmap_2d::LayeredCostmap* layered_costmap);
   ~ObstacleCostFunction();
 
   ExePathOutcome prepare(const geometry_msgs::PoseStamped& current_pose);
@@ -73,20 +75,12 @@ public:
       const double& y,
       const double& th,
       const std::vector<geometry_msgs::Point>& scaled_footprint,
-      costmap_2d::Costmap2D* costmap,
-      base_local_planner::WorldModel* world_model);
-
-  double footprintCost(
-      const double& x,
-      const double& y,
-      const double& th,
-      const std::vector<geometry_msgs::Point>& scaled_footprint,
-      std::vector<costmap_2d::Costmap2D>* timed_costmaps,
+      costmap_2d::LayeredCostmap* layered_costmap,
       base_local_planner::WorldModel* world_model,
-      double t);
+      double t = 0.0);
 
 private:
-  std::vector<costmap_2d::Costmap2D>* timed_costmaps_;
+  costmap_2d::LayeredCostmap* layered_costmap_;
   costmap_2d::Costmap2D* costmap_;
   std::vector<geometry_msgs::Point> footprint_spec_;
   base_local_planner::WorldModel* world_model_;

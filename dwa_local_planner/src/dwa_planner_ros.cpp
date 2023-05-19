@@ -128,10 +128,10 @@ namespace dwa_local_planner {
 
       // make sure to update the costmap we'll use for this cycle
       costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
-      std::vector<costmap_2d::Costmap2D>* timed_costmaps = costmap_ros_->getTimedCostmaps();
+      costmap_2d::LayeredCostmap* layered_costmap = costmap_ros_->getLayeredCostmap();
 
 
-      planner_util_.initialize(tf, costmap, timed_costmaps, costmap_ros_->getGlobalFrameID());
+      planner_util_.initialize(tf, costmap, layered_costmap, costmap_ros_->getGlobalFrameID());
 
       //create the actual planner that we'll use.. it'll configure itself from the parameter server
       dp_ = boost::shared_ptr<DWAPlanner>(new DWAPlanner(name, &planner_util_));
