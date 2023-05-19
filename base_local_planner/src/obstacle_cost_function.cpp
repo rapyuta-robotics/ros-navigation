@@ -156,14 +156,13 @@ double ObstacleCostFunction::footprintCost (
 
   //check if the footprint is legal
   // TODO: Cache inscribed radius
-  std::vector<costmap_2d::Costmap2D> timed_costmaps = layered_costmap->getTimedCostmaps();
-  costmap_2d::Costmap2D* costmap = layered_costmap->getCostmap();
-  double timestep = layered_costmap->getTimestep();
-  int n = round(std::min((int)(t/timestep), (int)timed_costmaps.size()-1));
+  costmap_2d::Costmap2D* costmap = layered_costmap->getCostmap(t);
 
-  base_local_planner::CostmapModel world_model_ = timed_costmaps[n]; // create new world model??
+  if (costmap_ != NULL) {
+    world_model_ = new base_local_planner::CostmapModel(*costmap_);
+  }
 
-  double footprint_cost = world_model_.footprintCost(x, y, th, scaled_footprint);
+  double footprint_cost = world_model_->footprintCost(x, y, th, scaled_footprint);
 
   if (footprint_cost < 0) {
     return -6.0;
