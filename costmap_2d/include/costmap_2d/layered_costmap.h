@@ -94,7 +94,10 @@ public:
     return &costmap_;
   }
 
-  std::vector<Costmap2D>* getTimedCostmaps();
+  std::vector<Costmap2D> getTimedCostmaps();
+
+  double getTimestep();
+
 
   bool isRolling()
   {

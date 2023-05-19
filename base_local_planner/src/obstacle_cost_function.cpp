@@ -44,8 +44,8 @@
 
 namespace base_local_planner {
 
-ObstacleCostFunction::ObstacleCostFunction(std::vector<costmap_2d::Costmap2D>* timed_costmaps)
-    : timed_costmaps_(timed_costmaps), costmap_(), sum_scores_(false), sideward_inflation_scale_(1.0) {
+ObstacleCostFunction::ObstacleCostFunction(costmap_2d::LayeredCostmap* layered_costmap)
+    : layered_costmap_(layered_costmap), costmap_(layered_costmap->getCostmap()), sum_scores_(false), sideward_inflation_scale_(1.0) {
   // if (costmap_ != NULL) {
   //   world_model_ = new base_local_planner::CostmapModel(*costmap_);
   //   // Check what this is being used for!!!!!!
@@ -121,7 +121,7 @@ double ObstacleCostFunction::scoreTrajectory(Trajectory &traj) {
     traj.getPoint(i, px, py, pth);
     double f_cost = footprintCost(px, py, pth,
         scaled_footprint,
-        timed_costmaps_, world_model_, i * traj.time_delta_); 
+        layered_costmap_, world_model_, i * traj.time_delta_); 
 
     if(f_cost < 0){
         return f_cost;
@@ -150,13 +150,18 @@ double ObstacleCostFunction::footprintCost (
     const double& y,
     const double& th,
     const std::vector<geometry_msgs::Point>& scaled_footprint,
-    costmap_2d::Costmap2D* costmap,
-    base_local_planner::WorldModel* world_model) {
+    costmap_2d::LayeredCostmap* layered_costmap,
+    base_local_planner::WorldModel* world_model,
+    double t) {
 
   //check if the footprint is legal
   // TODO: Cache inscribed radius
+  std::vector<costmap_2d::Costmap2D> timed_costmaps = layered_costmap->getTimedCostmaps();
+  costmap_2d::Costmap2D* costmap = layered_costmap->getCostmap();
+  double timestep = layered_costmap->getTimestep();
+  int n = round(std::min((int)(t/timestep), (int)timed_costmaps.size()-1));
 
-  base_local_planner::CostmapModel world_model_ = *costmap; // create new world model??
+  base_local_planner::CostmapModel world_model_ = timed_costmaps[n]; // create new world model??
 
   double footprint_cost = world_model_.footprintCost(x, y, th, scaled_footprint);
 
@@ -178,26 +183,5 @@ double ObstacleCostFunction::footprintCost (
 
   return occ_cost;
 }
-
-double ObstacleCostFunction::footprintCost (
-    const double& x,
-    const double& y,
-    const double& th,
-    const std::vector<geometry_msgs::Point>& scaled_footprint,
-    std::vector<costmap_2d::Costmap2D>* timed_costmaps,
-    base_local_planner::WorldModel* world_model,
-    double t) 
-    {
-      double timestep = 0.3;   // MAKE PARAMETER OR PASS FROM LAYERED COSTMAP (hard coded for testing)
-      int n = std::min((int)(t/timestep), (int)timed_costmaps->size()-1);
-      double cost = footprintCost(x, y, th, scaled_footprint, (&(*timed_costmaps)[n]), world_model);
-
-      if (cost > 240 && t > 0.4)
-      {
-        ROS_INFO_STREAM("<- put breakpoint here for debugging");
-      }
-      return cost;
-    }
-
 
 } /* namespace base_local_planner */
