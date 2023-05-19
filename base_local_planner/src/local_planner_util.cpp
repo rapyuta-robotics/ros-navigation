@@ -44,10 +44,13 @@ namespace base_local_planner {
 void LocalPlannerUtil::initialize(
     tf2_ros::Buffer* tf,
     costmap_2d::Costmap2D* costmap,
+    std::vector<costmap_2d::Costmap2D>* timed_costmaps,
     std::string global_frame) {
+
   if(!initialized_) {
     tf_ = tf;
     costmap_ = costmap;
+    timed_costmaps_ = timed_costmaps;    
     global_frame_ = global_frame;
     initialized_ = true;
   }
@@ -72,6 +75,11 @@ void LocalPlannerUtil::reconfigureCB(LocalPlannerLimits &config, bool restore_de
 
 costmap_2d::Costmap2D* LocalPlannerUtil::getCostmap() {
   return costmap_;
+}
+
+std::vector<costmap_2d::Costmap2D>* LocalPlannerUtil::getTimedCostmaps() {
+  std::vector<costmap_2d::Costmap2D> a = *timed_costmaps_;
+  return timed_costmaps_;
 }
 
 LocalPlannerLimits LocalPlannerUtil::getCurrentLimits() {
