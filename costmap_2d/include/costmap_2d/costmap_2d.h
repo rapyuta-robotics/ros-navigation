@@ -115,10 +115,7 @@ public:
    */
   unsigned char getCost(unsigned int mx, unsigned int my) const;
   
-  unsigned char getCost(unsigned int mx, unsigned int my, double t) const
-  {
-    return getCost(mx, my);
-  }
+  unsigned char getCost(unsigned int mx, unsigned int my, int n) const;
 
   /**
    * @brief  Set the cost of a cell in the costmap
@@ -127,11 +124,11 @@ public:
    * @param cost The cost to set the cell to
    */
   void setCost(unsigned int mx, unsigned int my, unsigned char cost);
+
+  void setCost(unsigned int mx, unsigned int my, unsigned char cost, unsigned char* costmap);
+
   
-  void setCost(unsigned int mx, unsigned int my, unsigned char cost, double t)
-  {
-    setCost(mx, my, cost);
-  }
+  void setCost(unsigned int mx, unsigned int my, unsigned char cost, double t);
 
 
   /**
@@ -204,7 +201,7 @@ public:
 
   std::vector<unsigned char*> getTimedCharMaps() const;
 
-  double getTimeStep() const
+  double getTimestep() const
   {
     return timestep_;
   }
@@ -303,7 +300,10 @@ public:
   void resizeMap(unsigned int size_x, unsigned int size_y, double resolution, double origin_x,
                  double origin_y);
 
-  void resetMap(unsigned int x0, unsigned int y0, unsigned int xn, unsigned int yn);
+  void resetMap(unsigned char* costmap);
+
+
+  void resetMaps(unsigned int x0, unsigned int y0, unsigned int xn, unsigned int yn);
 
   /**
    * @brief  Given distance in the world... convert it to cells

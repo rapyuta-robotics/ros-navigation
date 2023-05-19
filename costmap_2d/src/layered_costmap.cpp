@@ -146,7 +146,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
   if (xn < x0 || yn < y0)
     return;
 
-  costmap_.resetMap(x0, y0, xn, yn);
+  costmap_.resetMaps(x0, y0, xn, yn);
   for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
        ++plugin)
   {

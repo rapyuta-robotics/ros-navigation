@@ -102,16 +102,22 @@ void Costmap2D::resizeMap(unsigned int size_x, unsigned int size_y, double resol
   resetMaps();
 }
 
+void Costmap2D::resetMap(unsigned char* costmap)
+{
+  memset(costmap, default_value_, size_x_ * size_y_ * sizeof(unsigned char));
+}
+
+
 void Costmap2D::resetMaps()
 {
   boost::unique_lock<mutex_t> lock(*access_);
   for (unsigned char* costmap : timed_costmaps_)
   {
-    memset(costmap, default_value_, size_x_ * size_y_ * sizeof(unsigned char));
+    resetMap(costmap);
   }
 }
 
-void Costmap2D::resetMap(unsigned int x0, unsigned int y0, unsigned int xn, unsigned int yn)
+void Costmap2D::resetMaps(unsigned int x0, unsigned int y0, unsigned int xn, unsigned int yn)
 {
   boost::unique_lock<mutex_t> lock(*(access_));
   unsigned int len = xn - x0;
@@ -236,10 +242,28 @@ unsigned char Costmap2D::getCost(unsigned int mx, unsigned int my) const
   return timed_costmaps_.front()[getIndex(mx, my)];
 }
 
+unsigned char Costmap2D::getCost(unsigned int mx, unsigned int my, int n) const
+{
+  return timed_costmaps_[n][getIndex(mx, my)];
+}
+
 void Costmap2D::setCost(unsigned int mx, unsigned int my, unsigned char cost)
 {
-  timed_costmaps_.front()[getIndex(mx, my)] = cost;
+  for(auto costmap : timed_costmaps_)
+    costmap[getIndex(mx, my)] = cost;
 }
+
+void Costmap2D::setCost(unsigned int mx, unsigned int my, unsigned char cost, unsigned char* costmap)
+{
+  costmap[getIndex(mx, my)] = cost;
+}
+
+
+void Costmap2D::setCost(unsigned int mx, unsigned int my, unsigned char cost, double t)
+{
+  timed_costmaps_[round(t/timestep_)][getIndex(mx, my)] = cost;
+}
+
 
 void Costmap2D::mapToWorld(unsigned int mx, unsigned int my, double& wx, double& wy) const
 {

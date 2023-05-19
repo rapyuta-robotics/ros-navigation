@@ -113,6 +113,12 @@ protected:
    * If the sum value is larger than INSCRIBED_INFLATED_OBSTACLE,
    * the master value is set to (INSCRIBED_INFLATED_OBSTACLE - 1).
    */
+
+  void updateWithMax(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j, int n);
+  
+  void updateWithMaxTimed(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j);
+
+
   void updateWithAddition(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j);
 
   /**
