@@ -312,10 +312,11 @@ uint32_t GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const 
     geometry_msgs::PoseStamped best_pose = goal;
     bool goal_blocked = !found_legal;
     if (!found_legal) {
-      // if calculatePotentials did not result in a valid potential at the goal cell,
-      // check if any cells within tolerance around the goal have are in free space
-      // (if not, report that the goal is blocked) and have a valid potential
-      // (-> path can be found to displaced goal)
+      // calculatePotentials did not result in a valid potential at the goal cell:
+      // Check if any cells within tolerance around the goal have a valid potential:
+      // - if so, set found_legal to true and displace the goal,
+      //   such the getPlanFromPotential will generate a path to the displaced goal
+      // - if not, check whether any of the cells are even in free space (if not, report goal blocked)
       double resolution = costmap_->getResolution();
       geometry_msgs::PoseStamped p = goal;
 
