@@ -341,6 +341,12 @@ uint32_t GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const 
       if (goal_blocked) {
         message = "All cells around the goal within the tolerance are in collision";
         ROS_ERROR_STREAM(message);
+        if(publish_potential_)
+          publishPotential(potential_array_);
+        if(show_footprint_radii_)
+          showFootprintRadii();
+
+        delete[] potential_array_;
         return mbf_msgs::GetPathResult::BLOCKED_GOAL;
       }
 
