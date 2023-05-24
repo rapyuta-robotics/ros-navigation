@@ -91,7 +91,7 @@ public:
 
   Costmap2D* getCostmap(double t = 0.0);
 
-  double getTimestep();
+  const double getTimestep();
 
   bool isRolling()
   {
@@ -153,11 +153,6 @@ public:
    * This is updated by setFootprint(). */
   double getInscribedRadius() { return inscribed_radius_; }
 
-
-  // unsigned char getCost(unsigned int mx, unsigned int my, double t) const;
-
-
-
 private:
   std::vector<Costmap2D> timed_costmaps_;
   std::string global_frame_;
@@ -166,8 +161,10 @@ private:
 
   bool current_;
   double minx_, miny_, maxx_, maxy_;
-  double timestep_, prediction_time_;
   unsigned int bx0_, bxn_, by0_, byn_;
+
+  // To-Do: Make parameters (ideally should be same as planner sim_time and sim_granularity?)
+  double timestep_, prediction_time_; 
 
   std::vector<boost::shared_ptr<Layer> > plugins_;
 

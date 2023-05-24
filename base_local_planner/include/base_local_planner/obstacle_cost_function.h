@@ -56,7 +56,6 @@ class ObstacleCostFunction : public TrajectoryCostFunction {
 
 public:
   ObstacleCostFunction(costmap_2d::LayeredCostmap* layered_costmap);
-  ~ObstacleCostFunction();
 
   ExePathOutcome prepare(const geometry_msgs::PoseStamped& current_pose);
   double scoreTrajectory(Trajectory &traj);
@@ -76,14 +75,11 @@ public:
       const double& th,
       const std::vector<geometry_msgs::Point>& scaled_footprint,
       costmap_2d::LayeredCostmap* layered_costmap,
-      base_local_planner::WorldModel* world_model,
       double t = 0.0);
 
 private:
   costmap_2d::LayeredCostmap* layered_costmap_;
-  costmap_2d::Costmap2D* costmap_;
   std::vector<geometry_msgs::Point> footprint_spec_;
-  base_local_planner::WorldModel* world_model_;
   double max_trans_vel_;
   bool sum_scores_;
   //footprint scaling with velocity;
