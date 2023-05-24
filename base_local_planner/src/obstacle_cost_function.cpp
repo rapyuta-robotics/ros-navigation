@@ -158,8 +158,8 @@ double ObstacleCostFunction::footprintCost (
   // TODO: Cache inscribed radius
   costmap_2d::Costmap2D* costmap = layered_costmap->getCostmap(t);
 
-  if (costmap_ != NULL) {
-    world_model_ = new base_local_planner::CostmapModel(*costmap_);
+  if (costmap != NULL) {
+    world_model_ = new base_local_planner::CostmapModel(*costmap);
   }
 
   double footprint_cost = world_model_->footprintCost(x, y, th, scaled_footprint);

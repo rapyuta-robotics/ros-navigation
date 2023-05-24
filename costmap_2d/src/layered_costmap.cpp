@@ -49,7 +49,7 @@ namespace costmap_2d
 
 LayeredCostmap::LayeredCostmap(std::string global_frame, bool rolling_window, bool track_unknown) :
     timestep_(0.1),
-    prediction_time_(1.6),
+    prediction_time_(3.0),
     global_frame_(global_frame),
     rolling_window_(rolling_window),
     current_(false),
