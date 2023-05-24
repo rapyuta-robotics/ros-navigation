@@ -61,7 +61,6 @@ private:
   std::string name_;
   std::string global_frame_;
 
-  costmap_2d::Costmap2D* costmap_;
   costmap_2d::LayeredCostmap* layered_costmap_;
 
   tf2_ros::Buffer* tf_;
@@ -88,8 +87,7 @@ public:
   ~LocalPlannerUtil() {
   }
 
-  void initialize(tf2_ros::Buffer* tf,
-      costmap_2d::Costmap2D* costmap, costmap_2d::LayeredCostmap* layered_costmap,
+  void initialize(tf2_ros::Buffer* tf, costmap_2d::LayeredCostmap* layered_costmap,
       std::string global_frame);
 
   bool getGoal(geometry_msgs::PoseStamped& goal_pose);
@@ -100,7 +98,7 @@ public:
 
   bool getLocalPlan(const geometry_msgs::PoseStamped& global_pose, std::vector<geometry_msgs::PoseStamped>& transformed_plan);
 
-  costmap_2d::Costmap2D* getCostmap();
+  costmap_2d::Costmap2D* getCostmap(double t = 0);
 
   costmap_2d::LayeredCostmap* getLayeredCostmap();
 

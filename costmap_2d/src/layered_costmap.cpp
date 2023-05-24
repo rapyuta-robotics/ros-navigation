@@ -87,30 +87,41 @@ LayeredCostmap::~LayeredCostmap()
 
 void LayeredCostmap::resizeMap(unsigned int size_x, unsigned int size_y, double resolution, double origin_x,
                                double origin_y, bool size_locked)
-{
+{  
+  std::vector<boost::unique_lock<Costmap2D::mutex_t>> locks;
+  for (costmap_2d::Costmap2D& costmap : timed_costmaps_) {
+    locks.emplace_back(*(costmap.getMutex()));
+  }
+
   for(costmap_2d::Costmap2D& costmap : timed_costmaps_)
   {
-    boost::unique_lock<Costmap2D::mutex_t> lock(*(costmap.getMutex()));
     size_locked_ = size_locked;
     costmap.resizeMap(size_x, size_y, resolution, origin_x, origin_y);
-    for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
+  }
+  for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
         ++plugin)
-    {
-      (*plugin)->matchSize();
-    }
+  {
+    (*plugin)->matchSize();
   }
 }
 
 void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
 {
+  // Lock for the remainder of this function, some plugins (e.g. VoxelLayer)
+  // implement thread unsafe updateBounds() functions.
+  // Change to create new vector instead and copy after loop?
+  std::vector<boost::unique_lock<Costmap2D::mutex_t>> locks;
+  for (costmap_2d::Costmap2D& costmap : timed_costmaps_) {
+    locks.emplace_back(*(costmap.getMutex()));
+  }
+
   double t = -timestep_;
+  
+
+  // To-Do: Only compute timed layers inside the loop, non timed layers won't change and thus need to be computed only once
   for(costmap_2d::Costmap2D& costmap : timed_costmaps_)
   {
     t += timestep_;
-    // Lock for the remainder of this function, some plugins (e.g. VoxelLayer)
-    // implement thread unsafe updateBounds() functions.
-    boost::unique_lock<Costmap2D::mutex_t> lock(*(costmap.getMutex()));  // Change to create new costmap_ object instead??
-
     // if we're using a rolling buffer costmap_... we need to update the origin using the robot's position
     if (rolling_window_)
     {
@@ -171,9 +182,10 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     bxn_ = xn;
     by0_ = y0;
     byn_ = yn;
-
-    initialized_ = true;
   }
+  
+  initialized_ = true;
+
 }
 
 bool LayeredCostmap::isCurrent()
@@ -190,11 +202,14 @@ bool LayeredCostmap::isCurrent()
 
 costmap_2d::Costmap2D* LayeredCostmap::getCostmap(double t)
 {
+  if (timed_costmaps_.empty())
+    return NULL;
+
   int n = std::min((int)timed_costmaps_.size()-1, int(t/timestep_));
   return &timed_costmaps_[n];
 }
 
-double LayeredCostmap::getTimestep()
+const double LayeredCostmap::getTimestep()
   {
     return timestep_;
   }
