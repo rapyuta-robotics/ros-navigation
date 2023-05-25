@@ -127,7 +127,6 @@ namespace dwa_local_planner {
       costmap_ros_->getRobotPose(current_pose_);
 
       // make sure to update the costmap we'll use for this cycle
-      costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
       costmap_2d::LayeredCostmap* layered_costmap = costmap_ros_->getLayeredCostmap();
 
 
