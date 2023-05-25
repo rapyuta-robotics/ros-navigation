@@ -88,14 +88,10 @@ LayeredCostmap::~LayeredCostmap()
 void LayeredCostmap::resizeMap(unsigned int size_x, unsigned int size_y, double resolution, double origin_x,
                                double origin_y, bool size_locked)
 {  
-  std::vector<boost::unique_lock<Costmap2D::mutex_t>> locks;
-  for (costmap_2d::Costmap2D& costmap : timed_costmaps_) {
-    locks.emplace_back(*(costmap.getMutex()));
-  }
-
+  size_locked_ = size_locked;
   for(costmap_2d::Costmap2D& costmap : timed_costmaps_)
   {
-    size_locked_ = size_locked;
+    boost::unique_lock<Costmap2D::mutex_t> lock(*(costmap.getMutex()));
     costmap.resizeMap(size_x, size_y, resolution, origin_x, origin_y);
   }
   for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
@@ -107,21 +103,16 @@ void LayeredCostmap::resizeMap(unsigned int size_x, unsigned int size_y, double 
 
 void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
 {
-  // Lock for the remainder of this function, some plugins (e.g. VoxelLayer)
-  // implement thread unsafe updateBounds() functions.
-  // Change to create new vector instead and copy after loop?
-  std::vector<boost::unique_lock<Costmap2D::mutex_t>> locks;
-  for (costmap_2d::Costmap2D& costmap : timed_costmaps_) {
-    locks.emplace_back(*(costmap.getMutex()));
-  }
-
   double t = -timestep_;
-  
 
   // To-Do: Only compute timed layers inside the loop, non timed layers won't change and thus need to be computed only once
   for(costmap_2d::Costmap2D& costmap : timed_costmaps_)
   {
     t += timestep_;
+      // Lock for the remainder of this function, some plugins (e.g. VoxelLayer)
+    // implement thread unsafe updateBounds() functions.
+    boost::unique_lock<Costmap2D::mutex_t> lock(*(costmap.getMutex())); 
+
     // if we're using a rolling buffer costmap_... we need to update the origin using the robot's position
     if (rolling_window_)
     {
@@ -203,16 +194,17 @@ bool LayeredCostmap::isCurrent()
 costmap_2d::Costmap2D* LayeredCostmap::getCostmap(double t)
 {
   if (timed_costmaps_.empty())
-    return NULL;
+    return nullptr;
 
   int n = std::min((int)timed_costmaps_.size()-1, int(t/timestep_));
   return &timed_costmaps_[n];
 }
 
+// we're not using this rn...
 double LayeredCostmap::getTimestep() const
-  {
-    return timestep_;
-  }
+{
+  return timestep_;
+}
 
 
 void LayeredCostmap::setFootprint(const std::vector<geometry_msgs::Point>& footprint_spec)
