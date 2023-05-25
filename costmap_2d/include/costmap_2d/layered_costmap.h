@@ -89,9 +89,9 @@ public:
 
   bool isCurrent();
 
-  Costmap2D* getCostmap(double t = 0.0);
+  costmap_2d::Costmap2D* getCostmap(double t = 0.0);
 
-  const double getTimestep();
+  double getTimestep() const;
 
   bool isRolling()
   {
