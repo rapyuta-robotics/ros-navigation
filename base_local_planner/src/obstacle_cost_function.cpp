@@ -148,10 +148,10 @@ double ObstacleCostFunction::footprintCost (
   costmap_2d::Costmap2D* costmap = layered_costmap->getCostmap(t);
 
   if (costmap == NULL) {
-    return -1.0; // What to return ???????????
+    return -10.0; // What to return ???????????
   }
-
-  std::unique_ptr<base_local_planner::WorldModel> world_model(new base_local_planner::CostmapModel(*costmap));
+  
+  std::unique_ptr<base_local_planner::WorldModel> world_model = std::make_unique<base_local_planner::CostmapModel>(*costmap);
 
   double footprint_cost = world_model->footprintCost(x, y, th, scaled_footprint);
   
