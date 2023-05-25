@@ -209,7 +209,7 @@ costmap_2d::Costmap2D* LayeredCostmap::getCostmap(double t)
   return &timed_costmaps_[n];
 }
 
-const double LayeredCostmap::getTimestep()
+double LayeredCostmap::getTimestep() const
   {
     return timestep_;
   }
