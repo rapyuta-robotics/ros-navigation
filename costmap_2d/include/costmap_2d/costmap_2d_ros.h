@@ -263,7 +263,6 @@ private:
   boost::thread* map_update_thread_;  ///< @brief A thread for updating the map
   ros::Timer timer_;
   ros::Time last_publish_;
-  ros::Time prev_;
   ros::Duration publish_cycle;
   pluginlib::ClassLoader<Layer> plugin_loader_;
   geometry_msgs::PoseStamped old_pose_;
