@@ -48,8 +48,8 @@ namespace costmap_2d
 {
 
 LayeredCostmap::LayeredCostmap(std::string global_frame, bool rolling_window, bool track_unknown) :
-    timestep_(0.1),
-    prediction_time_(3.0),
+    timestep_(0.05),
+    prediction_time_(1.0),
     global_frame_(global_frame),
     rolling_window_(rolling_window),
     current_(false),
@@ -103,26 +103,76 @@ void LayeredCostmap::resizeMap(unsigned int size_x, unsigned int size_y, double 
 
 void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
 {
-  double t = -timestep_;
+  boost::unique_lock<Costmap2D::mutex_t> lock(*(timed_costmaps_.front().getMutex())); 
+
+  // if we're using a rolling buffer costmap_... we need to update the origin using the robot's position
+  if (rolling_window_)
+  {
+    double new_origin_x = robot_x - timed_costmaps_.front().getSizeInMetersX() / 2;
+    double new_origin_y = robot_y - timed_costmaps_.front().getSizeInMetersY() / 2;
+    timed_costmaps_.front().updateOrigin(new_origin_x, new_origin_y);
+  }
+
+  if (plugins_.size() == 0)
+    return;
+
+  minx_ = miny_ = 1e30;
+  maxx_ = maxy_ = -1e30;
+
+  for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
+      ++plugin)
+  {
+    if(!(*plugin)->isEnabled())
+      continue;
+    double prev_minx = minx_;
+    double prev_miny = miny_;
+    double prev_maxx = maxx_;
+    double prev_maxy = maxy_;
+    (*plugin)->updateBounds(robot_x, robot_y, robot_yaw, &minx_, &miny_, &maxx_, &maxy_);  // Add time here
+    if (minx_ > prev_minx || miny_ > prev_miny || maxx_ < prev_maxx || maxy_ < prev_maxy)
+    {
+      ROS_WARN_THROTTLE(1.0, "Illegal bounds change, was [tl: (%f, %f), br: (%f, %f)], but "
+                        "is now [tl: (%f, %f), br: (%f, %f)]. The offending layer is %s",
+                        prev_minx, prev_miny, prev_maxx , prev_maxy,
+                        minx_, miny_, maxx_ , maxy_,
+                        (*plugin)->getName().c_str());
+    }
+  }
+
+  int x0, xn, y0, yn;
+  timed_costmaps_.front().worldToMapEnforceBounds(minx_, miny_, x0, y0);   
+  timed_costmaps_.front().worldToMapEnforceBounds(maxx_, maxy_, xn, yn);
+
+  x0 = std::max(0, x0);
+  xn = std::min(int(timed_costmaps_.front().getSizeInCellsX()), xn + 1);
+  y0 = std::max(0, y0);
+  yn = std::min(int(timed_costmaps_.front().getSizeInCellsY()), yn + 1);
+
+  ROS_DEBUG("Updating area x: [%d, %d] y: [%d, %d]", x0, xn, y0, yn);
+
+  if (xn < x0 || yn < y0)
+    return;
+
+  timed_costmaps_.front().resetMap(x0, y0, xn, yn);
+  for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
+      ++plugin)
+  {
+    if((*plugin)->isEnabled())
+      (*plugin)->updateCosts(timed_costmaps_.front(), x0, y0, xn, yn); // Add time here
+  }
+
+  bx0_ = x0;
+  bxn_ = xn;
+  by0_ = y0;
+  byn_ = yn;
+
+  double t = 0;
 
   // To-Do: Only compute timed layers inside the loop, non timed layers won't change and thus need to be computed only once
   for(costmap_2d::Costmap2D& costmap : timed_costmaps_)
   {
     t += timestep_;
-      // Lock for the remainder of this function, some plugins (e.g. VoxelLayer)
-    // implement thread unsafe updateBounds() functions.
     boost::unique_lock<Costmap2D::mutex_t> lock(*(costmap.getMutex())); 
-
-    // if we're using a rolling buffer costmap_... we need to update the origin using the robot's position
-    if (rolling_window_)
-    {
-      double new_origin_x = robot_x - costmap.getSizeInMetersX() / 2;
-      double new_origin_y = robot_y - costmap.getSizeInMetersY() / 2;
-      costmap.updateOrigin(new_origin_x, new_origin_y);
-    }
-
-    if (plugins_.size() == 0)
-      return;
 
     minx_ = miny_ = 1e30;
     maxx_ = maxy_ = -1e30;
@@ -130,8 +180,10 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
         ++plugin)
     {
-      if(!(*plugin)->isEnabled())
+      if((*plugin)->getName() != "local_costmap/dynamic_obstacle") // ask for all timed plugins instead
         continue;
+
+      ROS_ERROR_STREAM((*plugin)->getName());
       double prev_minx = minx_;
       double prev_miny = miny_;
       double prev_maxx = maxx_;
@@ -156,7 +208,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     y0 = std::max(0, y0);
     yn = std::min(int(costmap.getSizeInCellsY()), yn + 1);
 
-    ROS_DEBUG("Updating area x: [%d, %d] y: [%d, %d]", x0, xn, y0, yn);
+    ROS_ERROR("Updating area x: [%d, %d] y: [%d, %d]", x0, xn, y0, yn);
 
     if (xn < x0 || yn < y0)
       return;
@@ -165,7 +217,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
         ++plugin)
     {
-      if((*plugin)->isEnabled())
+      if((*plugin)->getName() == "local_costmap/dynamic_obstacle")
         (*plugin)->updateCosts(costmap, x0, y0, xn, yn, t); // Add time here
     }
 
