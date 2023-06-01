@@ -47,9 +47,9 @@ using std::vector;
 namespace costmap_2d
 {
 
-LayeredCostmap::LayeredCostmap(std::string global_frame, bool rolling_window, bool track_unknown) :
-    timestep_(0.1),
-    prediction_time_(1.2),
+LayeredCostmap::LayeredCostmap(std::string global_frame, bool rolling_window, bool track_unknown, double prediction_time, double timestep) :
+    timestep_(timestep),
+    prediction_time_(prediction_time),
     global_frame_(global_frame),
     rolling_window_(rolling_window),
     current_(false),
@@ -65,9 +65,12 @@ LayeredCostmap::LayeredCostmap(std::string global_frame, bool rolling_window, bo
     size_locked_(false),
     circumscribed_radius_(1.0),
     inscribed_radius_(0.1)
-
 {
-  timed_costmaps_.resize(ceil(prediction_time_/timestep_));
+  if (!timestep_ || !prediction_time_)
+    timed_costmaps_.resize(1);
+  else
+    timed_costmaps_.resize(ceil(prediction_time_/timestep_));
+  
   for(auto& costmap : timed_costmaps_)
   {
     if (track_unknown)
@@ -172,7 +175,12 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
 
   double t = 0;
 
-  // To-Do: Only compute timed layers inside the loop, non timed layers won't change and thus need to be computed only once
+  // Idea for costmap converter implementation:
+  // Each update step move timed_costmaps one down, so timed_costmap(t=2) becomes timed_costmap(t=1)...
+  // Then update costs keeping noise from previous predictions. 
+  // Maybe implement a function like resetMap() but instead of setting to 0 subtract from previous cost?
+  // Or make some function cost depends on prev_cost, new_cost & t ????
+  // Influence of previous prediction should be higher the further in the future the timed_costmap is.
   for(costmap_2d::Costmap2D& costmap : timed_costmaps_)
   {
     if(t == 0)
@@ -187,14 +195,15 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
         ++plugin)
     {
-      if((*plugin)->getName() != "local_costmap/dynamic_obstacle") // ask for all timed plugins instead
+      // To-Do: plugin->isTimed() instead
+      if((*plugin)->getName() != "local_costmap/dynamic_obstacle") 
         continue;
 
       double prev_minx = minx_;
       double prev_miny = miny_;
       double prev_maxx = maxx_;
       double prev_maxy = maxy_;
-      (*plugin)->updateBounds(robot_x, robot_y, robot_yaw, &minx_, &miny_, &maxx_, &maxy_, t);  // Add time here
+      (*plugin)->updateBounds(robot_x, robot_y, robot_yaw, &minx_, &miny_, &maxx_, &maxy_, t);
       if (minx_ > prev_minx || miny_ > prev_miny || maxx_ < prev_maxx || maxy_ < prev_maxy)
       {
         ROS_WARN_THROTTLE(1.0, "Illegal bounds change, was [tl: (%f, %f), br: (%f, %f)], but "
@@ -223,8 +232,9 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
         ++plugin)
     {
+      // To-Do: plugin->isTimed() instead
       if((*plugin)->getName() == "local_costmap/dynamic_obstacle")
-        (*plugin)->updateCosts(costmap, x0, y0, xn, yn, t); // Time not used here rn...
+        (*plugin)->updateCosts(costmap, x0, y0, xn, yn, t); // Time is not used here atm...
     }
 
     bx0_ = x0;
@@ -254,7 +264,8 @@ costmap_2d::Costmap2D* LayeredCostmap::getCostmap(double t)
 {
   if (timed_costmaps_.empty())
     return nullptr;
-
+  if(!timestep_)
+    return &timed_costmaps_.front();
   int n = std::min((int)timed_costmaps_.size()-1, int(t/timestep_));
   return &timed_costmaps_[n];
 }
