@@ -75,6 +75,7 @@ Costmap2DROS::Costmap2DROS(const std::string& name, tf2_ros::Buffer& tf) :
     last_publish_(0),
     plugin_loader_("costmap_2d", "costmap_2d::Layer"),
     publisher_(NULL),
+    timed_publisher_(NULL),
     dsrv_(NULL),
     footprint_padding_(0.0)
 {
@@ -162,6 +163,9 @@ Costmap2DROS::Costmap2DROS(const std::string& name, tf2_ros::Buffer& tf) :
   publisher_ = new Costmap2DPublisher(&private_nh, layered_costmap_->getCostmap(), global_frame_, "costmap",
                                       always_send_full_costmap);
 
+  // Publish future timed costmap for debugging timed costmap (just for visualizing in rviz...)
+  timed_publisher_ = new Costmap2DPublisher(&private_nh, layered_costmap_->getCostmap(3), global_frame_, "timed_costmap",
+                                      always_send_full_costmap);
   // create a thread to handle updating the map
   stop_updates_ = false;
   initialized_ = true;
@@ -194,6 +198,9 @@ Costmap2DROS::~Costmap2DROS()
   }
   if (publisher_ != NULL)
     delete publisher_;
+  
+  if (timed_publisher_ != NULL)
+    delete timed_publisher_;
 
   delete layered_costmap_;
   delete dsrv_;
@@ -463,11 +470,13 @@ void Costmap2DROS::mapUpdateLoop(double frequency)
       unsigned int x0, y0, xn, yn;
       layered_costmap_->getBounds(&x0, &xn, &y0, &yn);
       publisher_->updateBounds(x0, xn, y0, yn);
+      timed_publisher_->updateBounds(x0, xn, y0, yn);
 
       ros::Time now = ros::Time::now();
       if (last_publish_ + publish_cycle < now)
       {
         publisher_->publishCostmap();
+        timed_publisher_->publishCostmap();
         last_publish_ = now;
       }
     }
