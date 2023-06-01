@@ -58,7 +58,7 @@ public:
   /**
    * @brief  Constructor for a costmap
    */
-  LayeredCostmap(std::string global_frame, bool rolling_window, bool track_unknown);
+  LayeredCostmap(std::string global_frame, bool rolling_window, bool track_unknown, double prediction_time = 0.0, double timestep = 0.0);
 
   /**
    * @brief  Destructor

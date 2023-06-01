@@ -268,6 +268,7 @@ private:
   geometry_msgs::PoseStamped old_pose_;
   Costmap2DPublisher* publisher_;
   Costmap2DPublisher* timed_publisher_;
+  double timestep_, prediction_time_;   
 
   dynamic_reconfigure::Server<costmap_2d::Costmap2DConfig> *dsrv_;
 

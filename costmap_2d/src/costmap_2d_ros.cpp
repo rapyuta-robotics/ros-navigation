@@ -89,6 +89,15 @@ Costmap2DROS::Costmap2DROS(const std::string& name, tf2_ros::Buffer& tf) :
   private_nh.param("global_frame", global_frame_, std::string("map"));
   private_nh.param("robot_base_frame", robot_base_frame_, std::string("base_link"));
 
+// Get params for timed_costmap
+  private_nh.param("prediction_time", prediction_time_, 0.0);
+  private_nh.param("timestep", timestep_, 0.0);
+  if(prediction_time_ && !timestep_)
+  {
+    timestep_ = 0.1;  // Default value?
+    ROS_WARN("%s/prediction_time is set to %.2fs, but %s/timestep is set to 0s... Using default value %.2fs for timestep instead", name.c_str(), prediction_time_, name.c_str(), timestep_);
+  }
+
   ros::Time last_error = ros::Time::now();
   std::string tf_error;
   // we need to make sure that the transform between the robot base frame and the global frame is available
@@ -113,7 +122,7 @@ Costmap2DROS::Costmap2DROS(const std::string& name, tf2_ros::Buffer& tf) :
   private_nh.param("track_unknown_space", track_unknown_space, false);
   private_nh.param("always_send_full_costmap", always_send_full_costmap, false);
 
-  layered_costmap_ = new LayeredCostmap(global_frame_, rolling_window, track_unknown_space);
+  layered_costmap_ = new LayeredCostmap(global_frame_, rolling_window, track_unknown_space, prediction_time_, timestep_);
 
   if (!private_nh.hasParam("plugins"))
   {
