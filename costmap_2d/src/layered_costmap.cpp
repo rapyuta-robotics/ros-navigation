@@ -110,7 +110,8 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
   {
     double new_origin_x = robot_x - timed_costmaps_.front().getSizeInMetersX() / 2;
     double new_origin_y = robot_y - timed_costmaps_.front().getSizeInMetersY() / 2;
-    timed_costmaps_.front().updateOrigin(new_origin_x, new_origin_y);
+    for(costmap_2d::Costmap2D& costmap : timed_costmaps_)
+      costmap.updateOrigin(new_origin_x, new_origin_y);
   }
 
   if (plugins_.size() == 0)
@@ -122,8 +123,9 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
   for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
       ++plugin)
   {
-    if(!(*plugin)->isEnabled())
+    if(!(*plugin)->isEnabled() || (*plugin)->getName() == "local_costmap/dynamic_obstacle")
       continue;
+
     double prev_minx = minx_;
     double prev_miny = miny_;
     double prev_maxx = maxx_;
@@ -139,8 +141,10 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     }
   }
 
+  // To-Do: if timed layers use costmap converter to paint into costmap and costmap converter only sees front()
+  // that means the bounds don't need to be updated for the timed layers? we can just take the same bounds as front()?
   int x0, xn, y0, yn;
-  timed_costmaps_.front().worldToMapEnforceBounds(minx_, miny_, x0, y0);   
+  timed_costmaps_.front().worldToMapEnforceBounds(minx_, miny_, x0, y0);  
   timed_costmaps_.front().worldToMapEnforceBounds(maxx_, maxy_, xn, yn);
 
   x0 = std::max(0, x0);
@@ -151,14 +155,14 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
   ROS_DEBUG("Updating area x: [%d, %d] y: [%d, %d]", x0, xn, y0, yn);
 
   if (xn < x0 || yn < y0)
-    return;
+    return; // To-Do: Do we need to change this?
 
-  timed_costmaps_.front().resetMap(x0, y0, xn, yn);
+  timed_costmaps_.front().resetMap(x0, y0, xn, yn); // To-Do:  Reset all Maps here or no? 
   for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
       ++plugin)
   {
-    if((*plugin)->isEnabled())
-      (*plugin)->updateCosts(timed_costmaps_.front(), x0, y0, xn, yn); // Add time here
+    if((*plugin)->isEnabled() && (*plugin)->getName() != "local_costmap/dynamic_obstacle")
+      (*plugin)->updateCosts(timed_costmaps_.front(), x0, y0, xn, yn);
   }
 
   bx0_ = x0;
@@ -171,9 +175,12 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
   // To-Do: Only compute timed layers inside the loop, non timed layers won't change and thus need to be computed only once
   for(costmap_2d::Costmap2D& costmap : timed_costmaps_)
   {
-    t += timestep_;
+    if(t == 0)
+    {
+      t += timestep_;
+      continue; // Put above code here?
+    }
     boost::unique_lock<Costmap2D::mutex_t> lock(*(costmap.getMutex())); 
-
     minx_ = miny_ = 1e30;
     maxx_ = maxy_ = -1e30;
 
@@ -210,24 +217,25 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     ROS_DEBUG("Updating area x: [%d, %d] y: [%d, %d]", x0, xn, y0, yn);
 
     if (xn < x0 || yn < y0)
-      return;
+      continue;
 
     costmap.resetMap(x0, y0, xn, yn);
     for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
         ++plugin)
     {
       if((*plugin)->getName() == "local_costmap/dynamic_obstacle")
-        (*plugin)->updateCosts(costmap, x0, y0, xn, yn, t); // Add time here
+        (*plugin)->updateCosts(costmap, x0, y0, xn, yn, t); // Time not used here rn...
     }
 
     bx0_ = x0;
     bxn_ = xn;
     by0_ = y0;
     byn_ = yn;
+
+    t += timestep_;
   }
   
   initialized_ = true;
-
 }
 
 bool LayeredCostmap::isCurrent()
