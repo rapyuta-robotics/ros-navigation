@@ -48,8 +48,8 @@ namespace costmap_2d
 {
 
 LayeredCostmap::LayeredCostmap(std::string global_frame, bool rolling_window, bool track_unknown) :
-    timestep_(0.05),
-    prediction_time_(1.0),
+    timestep_(0.1),
+    prediction_time_(1.2),
     global_frame_(global_frame),
     rolling_window_(rolling_window),
     current_(false),
@@ -183,7 +183,6 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
       if((*plugin)->getName() != "local_costmap/dynamic_obstacle") // ask for all timed plugins instead
         continue;
 
-      ROS_ERROR_STREAM((*plugin)->getName());
       double prev_minx = minx_;
       double prev_miny = miny_;
       double prev_maxx = maxx_;
@@ -208,7 +207,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     y0 = std::max(0, y0);
     yn = std::min(int(costmap.getSizeInCellsY()), yn + 1);
 
-    ROS_ERROR("Updating area x: [%d, %d] y: [%d, %d]", x0, xn, y0, yn);
+    ROS_DEBUG("Updating area x: [%d, %d] y: [%d, %d]", x0, xn, y0, yn);
 
     if (xn < x0 || yn < y0)
       return;
