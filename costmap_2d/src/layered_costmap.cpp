@@ -123,9 +123,15 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
   minx_ = miny_ = 1e30;
   maxx_ = maxy_ = -1e30;
 
+  // {1} To-Do: Maybe better to use static layers also for timed costmap and only switch obstacle layer for dynamic obstacle layer?
+  // Changes could be made in obstacle layer itself where if t > 0 we use the logic of current dynamic_obstacle layer...
+  // Then we can first update the static layers in ALL timed_costmaps and later only update the timed layers...
+  // See below comments with {1}
   for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
       ++plugin)
   {
+    // {1} calculate bounds for first costmap but ALL layers, default obstacle layer updateBounds with t = 0)
+    // or only calculate bounds if (!plugin->isTimed()) and add obstacle bounds in time loop
     if(!(*plugin)->isEnabled() || (*plugin)->getName() == "local_costmap/dynamic_obstacle")
       continue;
 
@@ -133,7 +139,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     double prev_miny = miny_;
     double prev_maxx = maxx_;
     double prev_maxy = maxy_;
-    (*plugin)->updateBounds(robot_x, robot_y, robot_yaw, &minx_, &miny_, &maxx_, &maxy_);  // Add time here
+    (*plugin)->updateBounds(robot_x, robot_y, robot_yaw, &minx_, &miny_, &maxx_, &maxy_);
     if (minx_ > prev_minx || miny_ > prev_miny || maxx_ < prev_maxx || maxy_ < prev_maxy)
     {
       ROS_WARN_THROTTLE(1.0, "Illegal bounds change, was [tl: (%f, %f), br: (%f, %f)], but "
@@ -158,12 +164,16 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
   ROS_DEBUG("Updating area x: [%d, %d] y: [%d, %d]", x0, xn, y0, yn);
 
   if (xn < x0 || yn < y0)
+  {
+    // ROS_ERROR_STREAM("WHEN DOES THIS HAPPEN??");
     return; // To-Do: Do we need to change this?
-
-  timed_costmaps_.front().resetMap(x0, y0, xn, yn); // To-Do:  Reset all Maps here or no? 
+  }
+  
+  timed_costmaps_.front().resetMap(x0, y0, xn, yn); // {1} Reset all Maps here? 
   for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
       ++plugin)
   {
+    // {1} if (!plugin->isTimed() loop throught timed_costmaps and updateCosts everywhere...
     if((*plugin)->isEnabled() && (*plugin)->getName() != "local_costmap/dynamic_obstacle")
       (*plugin)->updateCosts(timed_costmaps_.front(), x0, y0, xn, yn);
   }
@@ -173,14 +183,16 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
   by0_ = y0;
   byn_ = yn;
 
-  double t = 0;
-
   // Idea for costmap converter implementation:
   // Each update step move timed_costmaps one down, so timed_costmap(t=2) becomes timed_costmap(t=1)...
   // Then update costs keeping noise from previous predictions. 
   // Maybe implement a function like resetMap() but instead of setting to 0 subtract from previous cost?
   // Or make some function cost depends on prev_cost, new_cost & t ????
   // Influence of previous prediction should be higher the further in the future the timed_costmap is.
+  // ok but this is probably unneccessary...
+
+  double t = 0;
+
   for(costmap_2d::Costmap2D& costmap : timed_costmaps_)
   {
     if(t == 0)
@@ -195,7 +207,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
         ++plugin)
     {
-      // To-Do: plugin->isTimed() instead
+      // {1} plugin->isTimed() instead
       if((*plugin)->getName() != "local_costmap/dynamic_obstacle") 
         continue;
 
