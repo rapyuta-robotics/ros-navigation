@@ -123,16 +123,13 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
   minx_ = miny_ = 1e30;
   maxx_ = maxy_ = -1e30;
 
-  // {1} To-Do: Maybe better to use static layers also for timed costmap and only switch obstacle layer for dynamic obstacle layer?
-  // Changes could be made in obstacle layer itself where if t > 0 we use the logic of current dynamic_obstacle layer...
-  // Then we can first update the static layers in ALL timed_costmaps and later only update the timed layers...
-  // See below comments with {1}
+  // To-Do: Maybe store all static layers in a costmap object then 
   for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
       ++plugin)
   {
     // {1} calculate bounds for first costmap but ALL layers, default obstacle layer updateBounds with t = 0)
     // or only calculate bounds if (!plugin->isTimed()) and add obstacle bounds in time loop
-    if(!(*plugin)->isEnabled() || (*plugin)->getName() == "local_costmap/dynamic_obstacle")
+    if(!(*plugin)->isEnabled() || (*plugin)->isTimed())
       continue;
 
     double prev_minx = minx_;
@@ -165,7 +162,6 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
 
   if (xn < x0 || yn < y0)
   {
-    // ROS_ERROR_STREAM("WHEN DOES THIS HAPPEN??");
     return; // To-Do: Do we need to change this?
   }
   
@@ -173,8 +169,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
   for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
       ++plugin)
   {
-    // {1} if (!plugin->isTimed() loop throught timed_costmaps and updateCosts everywhere...
-    if((*plugin)->isEnabled() && (*plugin)->getName() != "local_costmap/dynamic_obstacle")
+    if((*plugin)->isEnabled() && !(*plugin)->isTimed())
       (*plugin)->updateCosts(timed_costmaps_.front(), x0, y0, xn, yn);
   }
 
@@ -207,8 +202,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
         ++plugin)
     {
-      // {1} plugin->isTimed() instead
-      if((*plugin)->getName() != "local_costmap/dynamic_obstacle") 
+      if((*plugin)->isTimed()) 
         continue;
 
       double prev_minx = minx_;
@@ -244,8 +238,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
         ++plugin)
     {
-      // To-Do: plugin->isTimed() instead
-      if((*plugin)->getName() == "local_costmap/dynamic_obstacle")
+      if((*plugin)->isTimed())
         (*plugin)->updateCosts(costmap, x0, y0, xn, yn, t); // Time is not used here atm...
     }
 
