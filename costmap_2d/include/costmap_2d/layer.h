@@ -73,9 +73,14 @@ public:
    *        calculated during UpdateBounds().
    */
   virtual void updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) {}
-
+  
   virtual void updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j, double t) {
                             updateCosts(master_grid, min_i, min_j, max_i, max_j);}
+
+  virtual bool isTimed() const
+  {
+    return false;
+  }
 
 
   /** @brief Stop publishers. */
