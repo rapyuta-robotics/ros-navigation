@@ -155,12 +155,13 @@ public:
 
 private:
   std::vector<Costmap2D> timed_costmaps_;
+  Costmap2D static_costmap_;
   std::string global_frame_;
 
   bool rolling_window_;  /// < @brief Whether or not the costmap should roll with the robot
 
   bool current_;
-  double minx_, miny_, maxx_, maxy_;
+  double minx_, miny_, maxx_, maxy_, timed_minx_, timed_miny_, timed_maxx_, timed_maxy_;
   unsigned int bx0_, bxn_, by0_, byn_;
 
   // To-Do: Make parameters (ideally should be same as planner sim_time and sim_granularity?)
