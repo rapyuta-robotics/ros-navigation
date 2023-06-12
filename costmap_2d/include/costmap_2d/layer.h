@@ -82,6 +82,12 @@ public:
     return false;
   }
 
+  // Layers that are neither part of the static nor the timed maps (like obstacle layer) will be only painted in the first timed costmap but
+  // not in the static costmap
+  virtual bool isTimedFront() const
+  {
+    return false;
+  }
 
   /** @brief Stop publishers. */
   virtual void deactivate() {}
