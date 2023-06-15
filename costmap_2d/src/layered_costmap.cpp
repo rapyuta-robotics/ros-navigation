@@ -138,14 +138,18 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
   minx_ = miny_ = 1e30;
   maxx_ = maxy_ = -1e30;
 
-  // To-Do: Maybe store all static layers in a static_costmap object?  
+  // In this first loop we create a 'static costmap' that we later copy into the timed costmaps, so
+  // we don't recompute costs that don't change over time...
   for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
       ++plugin)
   {
-    // {1} calculate bounds for first costmap but ALL layers, default obstacle layer updateBounds with t = 0)
-    // or only calculate bounds if (!plugin->isTimed()) and add obstacle bounds in time loop
-    if(!(*plugin)->isEnabled() || (*plugin)->isTimed() || (*plugin)->isTimedFront())
+
+    // We can't just skip timed plugins, since later plugins costs depend on previous ones, so a layers 
+    // cost could change over timed even if it is itself not timed (e.g. inflation layer)
+    if(!(*plugin)->isEnabled()) 
       continue;
+    else if((*plugin)->isTimed()) 
+      break;
 
     double prev_minx = minx_;
     double prev_miny = miny_;
@@ -181,11 +185,12 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
         ++plugin)
     {
-      // To-Do: To keep order of layers, use all Plugins until the first timed one...
-      if((*plugin)->isEnabled() && !(*plugin)->isTimed() && !(*plugin)->isTimedFront()) 
-      {
+      if(!(*plugin)->isEnabled())
+        continue;
+      else if((*plugin)->isTimed())
+        break;
+      else 
         (*plugin)->updateCosts(static_costmap_, x0, y0, xn, yn);
-      }
     }
 
     bx0_ = x0;
@@ -211,22 +216,23 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     // costmap.resetMap(x0, y0, xn, yn);
     // costmap = static_costmap_;
 
-    // To-Do: instead of copying the costmap it might be more efficient (and make more sense) 
-    // to add the timed costmaps in costmap2D class and do setCost(x,y) for every costmap in the timed vector.....
-    // But this causes some other issues......
-    // costmap = static_costmap_; // Copy static costmap 
-
     // timed_minx_ = timed_miny_ = 1e30;
     // timed_maxx_ = timed_maxy_ = -1e30;
     costmap.resizeMap(static_costmap_.getSizeInCellsX(), static_costmap_.getSizeInCellsY(), static_costmap_.getResolution(), static_costmap_.getOriginX(), static_costmap_.getOriginY());
     costmap = static_costmap_;
 
+    bool plugins_are_time_dependent = false;
     for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
         ++plugin)
     {
-      if ((t == 0 && !(*plugin)->isTimedFront()) || (t > 0 && !(*plugin)->isTimed()))
-        continue;
+      // if ((t == 0 && !(*plugin)->isTimedFront()) || (t > 0 && !(*plugin)->isTimed()))
+        // continue;
 
+      if (!(*plugin)->isTimed() && !plugins_are_time_dependent || (t > 0 && (*plugin)->isTimedFront()))
+        continue;
+      
+      plugins_are_time_dependent = true; // After the first timed plugin, all plugins are time dependent...
+        
       double minx, miny, maxx, maxy;
       // To-Do: save static bounds and compare against those, rather than previous timed costmaps bounds...
       (*plugin)->updateBounds(robot_x, robot_y, robot_yaw, &timed_minx_, &timed_miny_, &timed_maxx_, &timed_maxy_, t);
@@ -250,19 +256,23 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     y0 = std::max(0, y0);
     yn = std::min(int(costmap.getSizeInCellsY()), yn + 1);
 
+    // ROS_ERROR("Updating area x: [%d, %d] y: [%d, %d], t: %f ", x0, xn, y0, yn, t);
+
     if (xn < x0 || yn < y0)
       continue;
 
     // costmap.resetMap(x0, y0, xn, yn);
     // costmap.copyCostmapWindow(static_costmap_, 0, 0, static_costmap_.getSizeInMetersX(), static_costmap_.getSizeInMetersY());
-
+    plugins_are_time_dependent = false;
     for (vector<boost::shared_ptr<Layer> >::iterator plugin = plugins_.begin(); plugin != plugins_.end();
         ++plugin)
     {
-      if((t == 0 && (*plugin)->isTimedFront()) || (t > 0 && (*plugin)->isTimed()))
-      {
-        (*plugin)->updateCosts(costmap, x0, y0, xn, yn); // t is not used here atm...
-      }
+      if (!(*plugin)->isTimed() && !plugins_are_time_dependent || (t > 0 && (*plugin)->isTimedFront()))
+        continue;
+      
+      plugins_are_time_dependent = true;
+      // ROS_INFO_STREAM((*plugin)->getName() << " " << t);
+      (*plugin)->updateCosts(costmap, x0, y0, xn, yn); // t is not used here atm...
     }
 
     // bx0_ = x0; ??
