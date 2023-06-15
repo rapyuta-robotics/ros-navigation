@@ -77,6 +77,10 @@ public:
   virtual void deactivate();
   virtual void reset();
 
+  virtual bool isTimed() const override
+  {
+    return true;
+  }
 
   virtual bool isTimedFront() const override
   {

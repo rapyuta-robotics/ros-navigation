@@ -82,8 +82,9 @@ public:
     return false;
   }
 
-  // Layers that are neither part of the static nor the timed maps (like obstacle layer) will be only painted in the first timed costmap but
-  // not in the static costmap
+  // Layers that are time dependent but should only be painted in the costmap with time = 0, like obstacle layer or stvl layer
+  // -> these layers have no timed logic, but the here painted observations might include dynamic obstacles and are thus timed.
+  // To-Do: Find better solution for this... 
   virtual bool isTimedFront() const
   {
     return false;
