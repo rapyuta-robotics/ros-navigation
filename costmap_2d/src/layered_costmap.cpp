@@ -250,8 +250,6 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     y0 = std::max(0, y0);
     yn = std::min(int(costmap.getSizeInCellsY()), yn + 1);
 
-    ROS_ERROR("Updating area x: [%d, %d] y: [%d, %d], t: %f ", x0, xn, y0, yn, t);
-
     if (xn < x0 || yn < y0)
       continue;
 
@@ -263,7 +261,6 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     {
       if((t == 0 && (*plugin)->isTimedFront()) || (t > 0 && (*plugin)->isTimed()))
       {
-        ROS_INFO_STREAM((*plugin)->getName() << " " << t);
         (*plugin)->updateCosts(costmap, x0, y0, xn, yn); // t is not used here atm...
       }
     }
