@@ -79,12 +79,17 @@ public:
   void resizeMap(unsigned int size_x, unsigned int size_y, double resolution, double origin_x, double origin_y,
                  bool size_locked = false);
 
-  void getUpdatedBounds(double& minx, double& miny, double& maxx, double& maxy)
+  void getUpdatedBounds(double& minx, double& miny, double& maxx, double& maxy, double t = 0)
   {
-    minx = minx_;
-    miny = miny_;
-    maxx = maxx_;
-    maxy = maxy_;
+    int n;
+    if (!timestep_)
+      n = 0;
+    else
+      n = std::min((int)timed_bounds_.size()-1, int(t/timestep_));
+    minx = timed_bounds_[n].minx;
+    miny = timed_bounds_[n].miny;
+    maxx = timed_bounds_[n].maxx;
+    maxy = timed_bounds_[n].maxy;
   }
 
   bool isCurrent();
@@ -118,12 +123,17 @@ public:
     return size_locked_;
   }
 
-  void getBounds(unsigned int* x0, unsigned int* xn, unsigned int* y0, unsigned int* yn)
+  void getBounds(unsigned int* x0, unsigned int* xn, unsigned int* y0, unsigned int* yn, double t = 0.0)
   {
-    *x0 = bx0_;
-    *xn = bxn_;
-    *y0 = by0_;
-    *yn = byn_;
+    int n;
+    if (!timestep_)
+      n = 0;
+    else
+      n = std::min((int)timed_bounds_.size()-1, int(t/timestep_));
+    *x0 = timed_bounds_[n].bx0;
+    *xn = timed_bounds_[n].bxn;
+    *y0 = timed_bounds_[n].by0;
+    *yn = timed_bounds_[n].byn;
   }
 
   bool isInitialized()
@@ -153,18 +163,62 @@ public:
    * This is updated by setFootprint(). */
   double getInscribedRadius() { return inscribed_radius_; }
 
+protected:
+  /**
+   * Copied from Costmap2D
+   * To-Do: Modify function for use here...
+   * @brief  Copy a region of a source map into a destination map
+   * @param  source_map The source map
+   * @param sm_lower_left_x The lower left x point of the source map to start the copy
+   * @param sm_lower_left_y The lower left y point of the source map to start the copy
+   * @param sm_size_x The x size of the source map
+   * @param  dest_map The destination map
+   * @param dm_lower_left_x The lower left x point of the destination map to start the copy
+   * @param dm_lower_left_y The lower left y point of the destination map to start the copy
+   * @param dm_size_x The x size of the destination map
+   * @param region_size_x The x size of the region to copy
+   * @param region_size_y The y size of the region to copy
+   */
+  template<typename data_type>
+    void copyMapRegion(data_type* source_map, unsigned int sm_lower_left_x, unsigned int sm_lower_left_y,
+                       unsigned int sm_size_x, data_type* dest_map, unsigned int dm_lower_left_x,
+                       unsigned int dm_lower_left_y, unsigned int dm_size_x, unsigned int region_size_x,
+                       unsigned int region_size_y)
+    {
+      // we'll first need to compute the starting points for each map
+      data_type* sm_index = source_map + (sm_lower_left_y * sm_size_x + sm_lower_left_x);
+      data_type* dm_index = dest_map + (dm_lower_left_y * dm_size_x + dm_lower_left_x);
+
+      // now, we'll copy the source map into the destination map
+      for (unsigned int i = 0; i < region_size_y; ++i)
+      {
+        memcpy(dm_index, sm_index, region_size_x * sizeof(data_type));
+        sm_index += sm_size_x;
+        dm_index += dm_size_x;
+      }
+    }
+
 private:
+
+  // Struct to store bounds for the different timed costmaps
+  struct Costmap2DBounds
+  {
+    double minx, miny, maxx, maxy;
+    int bx0, bxn, by0, byn;
+  };
+  
   std::vector<Costmap2D> timed_costmaps_;
+  std::vector<Costmap2DBounds> timed_bounds_;
+
   Costmap2D static_costmap_;
   std::string global_frame_;
 
   bool rolling_window_;  /// < @brief Whether or not the costmap should roll with the robot
 
   bool current_;
-  double minx_, miny_, maxx_, maxy_, timed_minx_, timed_miny_, timed_maxx_, timed_maxy_;
-  unsigned int bx0_, bxn_, by0_, byn_;
 
-  // To-Do: Make parameters (ideally should be same as planner sim_time and sim_granularity?)
+  double static_minx_, static_miny_, static_maxx_, static_maxy_;
+  unsigned int static_bx0_, static_bxn_, static_by0_, static_byn_;
   double timestep_, prediction_time_; 
 
   std::vector<boost::shared_ptr<Layer> > plugins_;
