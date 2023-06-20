@@ -159,6 +159,8 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     {
       break;
     }
+    // To-Do:Check wether there currenty are timed changes, otherwise make isTimed() return false
+    // For this to have an effect on the current configuration we need to merge obstacle and dynamic obstacle layer...
 
     double prev_minx = static_minx_;
     double prev_miny = static_miny_;
@@ -234,13 +236,15 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
       // E.g.: Obstacle Layer -> Since the obstacle layer paints all observation, it would include dynamic obstacles
       // at their current position. We don't want to paint these dynamic obstacle at their current position in future
       // costmaps, otherwise we would have to manually remove them again.
+      // To-Do: Combine Obstacle and Dynamic Obstacle Layer into one Layer with a timed logic
       // A proper implementation of this depends on the logic of the perception component.....
       if ((i > 0 && (*plugin)->isTimedFront()))
         continue;
-        
+      
+      // To-Do: Calculate Bounds only for first and last costmap?
       (*plugin)->updateBounds(robot_x, robot_y, robot_yaw, 
                               &bounds.minx, &bounds.miny, 
-                              &bounds.maxx, &bounds.maxy);
+                              &bounds.maxx, &bounds.maxy, i*timestep_);
       if (bounds.minx > prev_minx || bounds.miny > prev_miny || 
           bounds.maxx < prev_maxx || bounds.maxy < prev_maxy)
       {
@@ -281,7 +285,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
         continue;
     
       // ROS_INFO_STREAM((*plugin)->getName() << " " << i);
-      (*plugin)->updateCosts(costmap, x0, y0, xn, yn); // i is not used here atm...
+      (*plugin)->updateCosts(costmap, x0, y0, xn, yn, i*timestep_); // i is not used here atm...
     }
 
     bounds.bx0 = x0;

@@ -68,6 +68,8 @@ void ObstacleLayer::onInitialize()
 
   ObstacleLayer::matchSize();
   current_ = true;
+  timed_ = true;
+  timed_front_ = true;
 
   global_frame_ = layered_costmap_->getGlobalFrameID();
   double transform_tolerance;
