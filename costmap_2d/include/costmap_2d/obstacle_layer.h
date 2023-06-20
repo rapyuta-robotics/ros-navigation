@@ -77,16 +77,6 @@ public:
   virtual void deactivate();
   virtual void reset();
 
-  virtual bool isTimed() const override
-  {
-    return true;
-  }
-
-  virtual bool isTimedFront() const override
-  {
-    return true;
-  }
-
   /**
    * @brief  A callback to handle buffering LaserScan messages
    * @param message The message returned from a message notifier

@@ -79,7 +79,7 @@ public:
 
   virtual bool isTimed() const
   {
-    return false;
+    return timed_;
   }
 
   // Layers that are time dependent but should only be painted in the costmap with time = 0, like obstacle layer or stvl layer
@@ -87,7 +87,7 @@ public:
   // To-Do: Find better solution for this... 
   virtual bool isTimedFront() const
   {
-    return false;
+    return timed_front_;
   }
 
   /** @brief Stop publishers. */
@@ -159,6 +159,7 @@ protected:
   LayeredCostmap* layered_costmap_;
   bool current_;
   bool enabled_;
+  bool timed_, timed_front_;
   std::string name_;
   tf2_ros::Buffer *tf_;
 

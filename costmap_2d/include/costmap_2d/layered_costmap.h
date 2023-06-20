@@ -166,7 +166,7 @@ public:
 protected:
   /**
    * Copied from Costmap2D
-   * To-Do: Modify function for use here...
+   * To-Do: Modify function for this use-case
    * @brief  Copy a region of a source map into a destination map
    * @param  source_map The source map
    * @param sm_lower_left_x The lower left x point of the source map to start the copy
@@ -200,7 +200,7 @@ protected:
 
 private:
 
-  // Struct to store bounds for the different timed costmaps
+  // Struct to store bounds for each timed costmaps
   struct Costmap2DBounds
   {
     double minx, miny, maxx, maxy;
