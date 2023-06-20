@@ -64,6 +64,10 @@ public:
   virtual void updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
                             double* max_x, double* max_y) {}
 
+  /**
+   * @brief Modified updateBounds() to use time argument t for timed layers. 
+   *        Calls the above function without t by default.
+   */
   virtual void updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
                             double* max_x, double* max_y, double t) {
                               updateBounds(robot_x, robot_y, robot_yaw, min_x, min_y, max_x, max_y);}
@@ -73,18 +77,30 @@ public:
    *        calculated during UpdateBounds().
    */
   virtual void updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) {}
-  
+
+  /**
+   * @brief Modified updateBCosts() to use time argument t for timed layers. 
+   *        Calls the above function without t by default.
+   */
   virtual void updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j, double t) {
                             updateCosts(master_grid, min_i, min_j, max_i, max_j);}
 
+  /**
+   * @brief Returns true for layers that have a timed logic.
+   */
   virtual bool isTimed() const
   {
     return timed_;
   }
 
-  // Layers that are time dependent but should only be painted in the costmap with time = 0, like obstacle layer or stvl layer
-  // -> these layers have no timed logic, but the here painted observations might include dynamic obstacles and are thus timed.
-  // To-Do: Find better solution for this... 
+  /**
+   * @brief Returns true for layers that are time dependent but don't have a timed logic yet.
+   *        These layers should not be part of the static costmap but should be painted in the
+   *        first timed costmap (where t = 0). 
+   *        This includes layers like the obstacle or stvl layer, which paint observations that 
+   *        might include dynamic obstacles and are thus timed but should not be painted in 
+   *        every timestep.
+   */
   virtual bool isTimedFront() const
   {
     return timed_front_;

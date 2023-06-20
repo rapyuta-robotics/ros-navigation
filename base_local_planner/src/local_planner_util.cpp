@@ -45,7 +45,6 @@ void LocalPlannerUtil::initialize(
     tf2_ros::Buffer* tf,
     costmap_2d::LayeredCostmap* layered_costmap,
     std::string global_frame) {
-
   if(!initialized_) {
     tf_ = tf;
     layered_costmap_ = layered_costmap;    

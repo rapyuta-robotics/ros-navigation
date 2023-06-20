@@ -44,7 +44,6 @@
 #include <costmap_2d/costmap_2d.h>
 #include <costmap_2d/layered_costmap.h>
 
-
 namespace base_local_planner {
 
 /**
@@ -68,7 +67,6 @@ public:
 
   // helper functions, made static for easy unit testing
   static double getScalingFactor(const Trajectory &traj, double scaling_speed, double max_trans_vel);
-  
   double footprintCost(
       const double& x,
       const double& y,
