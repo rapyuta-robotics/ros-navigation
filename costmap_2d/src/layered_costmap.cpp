@@ -103,10 +103,9 @@ LayeredCostmap::~LayeredCostmap()
 
 void LayeredCostmap::resizeMap(unsigned int size_x, unsigned int size_y, double resolution, double origin_x,
                                double origin_y, bool size_locked)
-{  
-  size_locked_ = size_locked;
-  
+{
   boost::unique_lock<Costmap2D::mutex_t> lock(*(static_costmap_.getMutex()));
+  size_locked_ = size_locked;
   static_costmap_.resizeMap(size_x, size_y, resolution, origin_x, origin_y);
   for(Costmap2D& costmap : timed_costmaps_)
   {
@@ -124,7 +123,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
 {
   boost::unique_lock<Costmap2D::mutex_t> lock(*(static_costmap_.getMutex())); // Uneccessary to lock?
 
-  // if we're using a rolling buffer costmap_... we need to update the origin using the robot's position
+  // if we're using a rolling buffer costmap... we need to update the origin using the robot's position
   if (rolling_window_)
   {
     double new_origin_x = robot_x - timed_costmaps_.front().getSizeInMetersX() / 2;
@@ -133,7 +132,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     for(costmap_2d::Costmap2D& costmap : timed_costmaps_)
       costmap.updateOrigin(new_origin_x, new_origin_y);
   }
-  
+
   if (plugins_.size() == 0)
     return;
 
@@ -154,13 +153,13 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
       continue;
     }
     // We can't just skip timed plugins, since later plugins costs depend on previous ones, so a layers 
-    // cost could change over timed even if it is itself not timed (e.g. inflation layer) -> break.
+    // cost could change over time even if it is itself not timed (e.g. inflation layer) -> break.
     else if((*plugin)->isTimed())
     {
       break;
     }
     // To-Do:Check wether there currenty are timed changes, otherwise make isTimed() return false
-    // For this to have an effect on the current configuration we need to merge obstacle and dynamic obstacle layer...
+    // For this to have an effect on the current configuration we need to make obstacle and dynamic obstacle layer into one...
 
     double prev_minx = static_minx_;
     double prev_miny = static_miny_;
@@ -175,9 +174,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
                         static_minx_, static_miny_, static_maxx_ , static_maxy_,
                         (*plugin)->getName().c_str());
     }
-    // ROS_INFO_STREAM((*plugin)->getName());
-    // ROS_ERROR("Updating area x: [%f, %f] y: [%f, %f] ", static_minx_, static_maxx_, static_miny_, static_maxy_);
-
+    // ROS_DEBUG("%s is updating area x: [%f, %f] y: [%f, %f] ", (*plugin)->getName(), static_minx_, static_maxx_, static_miny_, static_maxy_);
   }
 
   int static_x0, static_xn, static_y0, static_yn;
@@ -189,8 +186,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
   static_y0 = std::max(0, static_y0);
   static_yn = std::min(int(static_costmap_.getSizeInCellsY()), static_yn + 1);
 
-  // ROS_DEBUG("Updating area x: [%d, %d] y: [%d, %d]", x0, xn, y0, yn);
-  // ROS_ERROR("Updating area x: [%f, %f] y: [%f, %f] ", static_minx_, static_maxx_, static_miny_, static_maxy_);
+  // ROS_DEBUG("Updating area x: [%f, %f] y: [%f, %f] ", static_minx_, static_maxx_, static_miny_, static_maxy_);
 
   if (static_xn > static_x0 && static_yn > static_y0)
   {
@@ -209,13 +205,13 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
 
   // In this second loop we create the actual 'timed_costmaps'.
   // We loop through the timesteps, and compute bounds and costs for each timed costmap 
-  // based on the time index i given by the time i = t / timestep.
+  // based on index i (i = t / timestep)
   for (size_t i = 0; i < timed_costmaps_.size(); ++i)
   {
     Costmap2D& costmap = timed_costmaps_[i];
     Costmap2DBounds& bounds = timed_bounds_[i];
 
-    // We set the timed bounds to the static bounds to include changes in the static layers 
+    // We set the timed bounds to the static bounds to include changes from the static layers 
     bounds.minx = static_minx_;
     bounds.miny = static_miny_;
     bounds.maxx = static_maxx_;
@@ -256,9 +252,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
                           (*plugin)->getName().c_str());
       }
 
-      // ROS_INFO_STREAM((*plugin)->getName());
-      // ROS_INFO_STREAM("Updating area x: [%f, %f] y: [%f, %f], i: %d i: %f ", bounds.minx, bounds.maxx, bounds.miny, bounds.maxy, i, i*timestep_);
-
+      // ROS_DEBUG_STREAM("%s is updating area x: [%f, %f] y: [%f, %f], i: %d i: %f ", (*plugin)->getName(), bounds.minx, bounds.maxx, bounds.miny, bounds.maxy, i, i*timestep_);
     }
     int x0, xn, y0, yn;
     costmap.worldToMapEnforceBounds(bounds.minx, bounds.miny, x0, y0);   
@@ -269,7 +263,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     y0 = std::max(0, y0);
     yn = std::min(int(costmap.getSizeInCellsY()), yn + 1);
 
-    // ROS_ERROR("Updating area x: [%d, %d] y: [%d, %d], i: %d i: %f ", x0, xn, y0, yn, i, i*timestep_);
+    // ROS_DEBUG("Updating area x: [%d, %d] y: [%d, %d], i: %d i: %f ", x0, xn, y0, yn, i, i*timestep_);
 
     if (xn < x0 || yn < y0)
       continue;
@@ -283,8 +277,8 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     {
       if ((i > 0 && (*plugin)->isTimedFront()))
         continue;
-    
-      // ROS_INFO_STREAM((*plugin)->getName() << " " << i);
+
+      // Now we update the costs of the timed layers...
       (*plugin)->updateCosts(costmap, x0, y0, xn, yn, i*timestep_); // i is not used here atm...
     }
 
@@ -324,7 +318,6 @@ double LayeredCostmap::getTimestep() const
 {
   return timestep_;
 }
-
 
 void LayeredCostmap::setFootprint(const std::vector<geometry_msgs::Point>& footprint_spec)
 {

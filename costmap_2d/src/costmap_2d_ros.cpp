@@ -172,7 +172,7 @@ Costmap2DROS::Costmap2DROS(const std::string& name, tf2_ros::Buffer& tf) :
   publisher_ = new Costmap2DPublisher(&private_nh, layered_costmap_->getCostmap(), global_frame_, "costmap",
                                       always_send_full_costmap);
 
-  // Publish future timed costmap for debugging timed costmap (just for visualizing in rviz...)
+  // Publish future timed costmap (t = 5s) for debugging timed costmap (just for visualizing in rviz...)
   timed_publisher_ = new Costmap2DPublisher(&private_nh, layered_costmap_->getCostmap(5), global_frame_, "timed_costmap",
                                       always_send_full_costmap);
   // create a thread to handle updating the map
@@ -207,7 +207,7 @@ Costmap2DROS::~Costmap2DROS()
   }
   if (publisher_ != NULL)
     delete publisher_;
-  
+
   if (timed_publisher_ != NULL)
     delete timed_publisher_;
 

@@ -56,7 +56,7 @@ class LayeredCostmap
 {
 public:
   /**
-   * @brief  Constructor for a costmap
+   * @brief  Constructor for a timed costmap
    */
   LayeredCostmap(std::string global_frame, bool rolling_window, bool track_unknown, double prediction_time = 0.0, double timestep = 0.0);
 
@@ -165,7 +165,7 @@ public:
 
 protected:
   /**
-   * Copied from Costmap2D
+   * ! Function copied from Costmap2D !
    * To-Do: Modify function for this use-case
    * @brief  Copy a region of a source map into a destination map
    * @param  source_map The source map
@@ -200,7 +200,7 @@ protected:
 
 private:
 
-  // Struct to store bounds for each timed costmaps
+  // Struct to store the bounds for each timed costmaps
   struct Costmap2DBounds
   {
     double minx, miny, maxx, maxy;
@@ -217,7 +217,7 @@ private:
 
   bool current_;
 
-  double static_minx_, static_miny_, static_maxx_, static_maxy_;
+  double static_minx_, static_miny_, static_maxx_, static_maxy_;  // Bounds for static costmap
   unsigned int static_bx0_, static_bxn_, static_by0_, static_byn_;
   double timestep_, prediction_time_; 
 

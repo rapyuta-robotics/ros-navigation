@@ -68,6 +68,12 @@ void ObstacleLayer::onInitialize()
 
   ObstacleLayer::matchSize();
   current_ = true;
+
+  // The obstacle layer is considered time dependent as it paints also dynamic obstacles that are 
+  // observed by sensord. However, it does not yet have a timed logic, so we don't want to paint these
+  // Observations in all timed snapshots
+  // To-Do: Add timed logic (--> Dynamic Obstacle Layer)
+  // How to implement this depends on how perception component provides information...
   timed_ = true;
   timed_front_ = true;
 

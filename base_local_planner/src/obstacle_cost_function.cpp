@@ -94,7 +94,6 @@ ExePathOutcome ObstacleCostFunction::prepare(const geometry_msgs::PoseStamped& c
 
 double ObstacleCostFunction::scoreTrajectory(Trajectory &traj) {
   double cost = 0;
-
   double px, py, pth;
   if (footprint_spec_.size() == 0) {
     // Bug, should never happen

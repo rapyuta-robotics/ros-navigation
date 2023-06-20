@@ -62,7 +62,6 @@ private:
   std::string global_frame_;
 
   costmap_2d::LayeredCostmap* layered_costmap_;
-
   tf2_ros::Buffer* tf_;
 
 
@@ -99,7 +98,7 @@ public:
   bool getLocalPlan(const geometry_msgs::PoseStamped& global_pose, std::vector<geometry_msgs::PoseStamped>& transformed_plan);
 
   costmap_2d::Costmap2D* getCostmap(double t = 0);
-
+  
   costmap_2d::LayeredCostmap* getLayeredCostmap();
 
   LocalPlannerLimits getCurrentLimits();
