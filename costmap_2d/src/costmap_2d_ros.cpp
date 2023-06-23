@@ -92,7 +92,7 @@ Costmap2DROS::Costmap2DROS(const std::string& name, tf2_ros::Buffer& tf) :
 // Get params for timed_costmap
   private_nh.param("prediction_time", prediction_time_, 0.0);
   private_nh.param("timestep", timestep_, 0.0);
-  if(prediction_time_ && !timestep_)
+  if(prediction_time_ > 0 && timestep_ == 0)
   {
     timestep_ = 0.1;  // Default value?
     ROS_WARN("%s/prediction_time is set to %.2fs, but %s/timestep is set to 0s... Using default value %.2fs for timestep instead", name.c_str(), prediction_time_, name.c_str(), timestep_);

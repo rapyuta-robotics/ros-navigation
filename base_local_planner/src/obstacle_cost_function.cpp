@@ -150,9 +150,8 @@ double ObstacleCostFunction::footprintCost (
     return -10.0; // What to return ???????????
   }
   
-  std::unique_ptr<base_local_planner::WorldModel> world_model = std::make_unique<base_local_planner::CostmapModel>(*costmap);
-
-  double footprint_cost = world_model->footprintCost(x, y, th, scaled_footprint);
+  base_local_planner::CostmapModel world_model(*costmap);
+  double footprint_cost = world_model.footprintCost(x, y, th, scaled_footprint);
   
   if (footprint_cost < 0) {
     return -6.0;

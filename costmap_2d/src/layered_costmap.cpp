@@ -67,7 +67,7 @@ LayeredCostmap::LayeredCostmap(std::string global_frame, bool rolling_window, bo
     circumscribed_radius_(1.0),
     inscribed_radius_(0.1)
 {
-  if (!timestep_ || !prediction_time_)
+  if (timestep_ == 0 || prediction_time_ == 0)
     timed_costmaps_.resize(1);
   else
     timed_costmaps_.resize(ceil(prediction_time_/timestep_));
@@ -234,7 +234,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
       // costmaps, otherwise we would have to manually remove them again.
       // To-Do: Combine Obstacle and Dynamic Obstacle Layer into one Layer with a timed logic
       // A proper implementation of this depends on the logic of the perception component.....
-      if ((i > 0 && (*plugin)->isTimedFront()))
+      if ((i > 0 && (*plugin)->paintOnlyCurrentTime()))
         continue;
       
       // To-Do: Calculate Bounds only for first and last costmap?
@@ -275,7 +275,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     for (vector<boost::shared_ptr<Layer> >::iterator plugin = current_plugin; plugin != plugins_.end();
         ++plugin)
     {
-      if ((i > 0 && (*plugin)->isTimedFront()))
+      if ((i > 0 && (*plugin)->paintOnlyCurrentTime()))
         continue;
 
       // Now we update the costs of the timed layers...
@@ -307,7 +307,7 @@ costmap_2d::Costmap2D* LayeredCostmap::getCostmap(double t)
 {
   if (timed_costmaps_.empty())
     return nullptr;
-  else if(!timestep_)
+  else if(timestep_ == 0)
     return &timed_costmaps_.front();
   int i = std::min((int)timed_costmaps_.size()-1, int(t/timestep_));  
   return &timed_costmaps_[i];

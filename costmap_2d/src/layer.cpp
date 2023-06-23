@@ -37,7 +37,7 @@ Layer::Layer()
   , current_(false)
   , enabled_(false)
   , timed_(false)
-  , timed_front_(false)
+  , paint_only_current_time_(false)
   , name_()
   , tf_(NULL)
 {}

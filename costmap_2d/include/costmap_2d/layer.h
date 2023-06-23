@@ -69,8 +69,10 @@ public:
    *        Calls the above function without t by default.
    */
   virtual void updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
-                            double* max_x, double* max_y, double t) {
-                              updateBounds(robot_x, robot_y, robot_yaw, min_x, min_y, max_x, max_y);}
+                            double* max_x, double* max_y, double t)
+  {
+    updateBounds(robot_x, robot_y, robot_yaw, min_x, min_y, max_x, max_y);
+  }
 
   /**
    * @brief Actually update the underlying costmap, only within the bounds
@@ -79,16 +81,18 @@ public:
   virtual void updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) {}
 
   /**
-   * @brief Modified updateBCosts() to use time argument t for timed layers. 
+   * @brief Modified updateCosts() to use time argument t for timed layers.
    *        Calls the above function without t by default.
    */
-  virtual void updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j, double t) {
-                            updateCosts(master_grid, min_i, min_j, max_i, max_j);}
+  virtual void updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j, double t)
+  {
+    updateCosts(master_grid, min_i, min_j, max_i, max_j);
+  }
 
   /**
    * @brief Returns true for layers that have a timed logic.
    */
-  virtual bool isTimed() const
+  bool isTimed() const
   {
     return timed_;
   }
@@ -100,10 +104,11 @@ public:
    *        This includes layers like the obstacle or stvl layer, which paint observations that 
    *        might include dynamic obstacles and are thus timed but should not be painted in 
    *        every timestep.
+   *        To-Do: Change logic and remove this function (ideally make all layers either timed or not timed)
    */
-  virtual bool isTimedFront() const
+  bool paintOnlyCurrentTime() const
   {
-    return timed_front_;
+    return paint_only_current_time_;
   }
 
   /** @brief Stop publishers. */
@@ -175,7 +180,7 @@ protected:
   LayeredCostmap* layered_costmap_;
   bool current_;
   bool enabled_;
-  bool timed_, timed_front_;
+  bool timed_, paint_only_current_time_;
   std::string name_;
   tf2_ros::Buffer *tf_;
 

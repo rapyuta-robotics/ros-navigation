@@ -75,7 +75,7 @@ void ObstacleLayer::onInitialize()
   // To-Do: Add timed logic (--> Dynamic Obstacle Layer)
   // How to implement this depends on how perception component provides information...
   timed_ = true;
-  timed_front_ = true;
+  paint_only_current_time_ = true;
 
   global_frame_ = layered_costmap_->getGlobalFrameID();
   double transform_tolerance;

@@ -81,15 +81,15 @@ public:
 
   void getUpdatedBounds(double& minx, double& miny, double& maxx, double& maxy, double t = 0)
   {
-    int n;
-    if (!timestep_)
-      n = 0;
+    int i;
+    if (timestep_ == 0)
+      i = 0;
     else
-      n = std::min((int)timed_bounds_.size()-1, int(t/timestep_));
-    minx = timed_bounds_[n].minx;
-    miny = timed_bounds_[n].miny;
-    maxx = timed_bounds_[n].maxx;
-    maxy = timed_bounds_[n].maxy;
+      i = std::min((int)timed_bounds_.size()-1, int(t/timestep_));
+    minx = timed_bounds_[i].minx;
+    miny = timed_bounds_[i].miny;
+    maxx = timed_bounds_[i].maxx;
+    maxy = timed_bounds_[i].maxy;
   }
 
   bool isCurrent();
@@ -125,15 +125,15 @@ public:
 
   void getBounds(unsigned int* x0, unsigned int* xn, unsigned int* y0, unsigned int* yn, double t = 0.0)
   {
-    int n;
-    if (!timestep_)
-      n = 0;
+    int i;
+    if (timestep_ == 0)
+      i = 0;
     else
-      n = std::min((int)timed_bounds_.size()-1, int(t/timestep_));
-    *x0 = timed_bounds_[n].bx0;
-    *xn = timed_bounds_[n].bxn;
-    *y0 = timed_bounds_[n].by0;
-    *yn = timed_bounds_[n].byn;
+      i = std::min((int)timed_bounds_.size()-1, int(t/timestep_));
+    *x0 = timed_bounds_[i].bx0;
+    *xn = timed_bounds_[i].bxn;
+    *y0 = timed_bounds_[i].by0;
+    *yn = timed_bounds_[i].byn;
   }
 
   bool isInitialized()
@@ -218,7 +218,7 @@ private:
   bool current_;
 
   double static_minx_, static_miny_, static_maxx_, static_maxy_;  // Bounds for static costmap
-  unsigned int static_bx0_, static_bxn_, static_by0_, static_byn_;
+  int static_bx0_, static_bxn_, static_by0_, static_byn_;
   double timestep_, prediction_time_; 
 
   std::vector<boost::shared_ptr<Layer> > plugins_;
