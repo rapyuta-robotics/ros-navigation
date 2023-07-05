@@ -250,9 +250,13 @@ void StaticLayer::activate()
 
 void StaticLayer::deactivate()
 {
+
+            ROS_ERROR_STREAM(getName() << "\t" << "map topics shutdown ");
   map_sub_.shutdown();
   if (subscribe_to_updates_)
     map_update_sub_.shutdown();
+            ros::Duration(10).sleep();
+
 }
 
 void StaticLayer::reset()
