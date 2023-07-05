@@ -67,13 +67,13 @@ LayeredCostmap::LayeredCostmap(std::string global_frame, bool rolling_window, bo
     circumscribed_radius_(1.0),
     inscribed_radius_(0.1)
 {
-  if (timestep_ == 0 || prediction_time_ == 0)
+  if (timestep_ <= 0 || prediction_time_ <= 0)
     timed_costmaps_.resize(1);
   else
     timed_costmaps_.resize(ceil(prediction_time_/timestep_));
   
   timed_bounds_.resize(timed_costmaps_.size());
-  for (auto bounds : timed_bounds_)
+  for (auto& bounds : timed_bounds_)
   {
     bounds.minx = bounds.maxx = bounds.miny = bounds.maxy =  0.0;
     bounds.bx0 = bounds.bxn = bounds.by0 = bounds.byn = 0;
@@ -130,7 +130,10 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     double new_origin_y = robot_y - timed_costmaps_.front().getSizeInMetersY() / 2;
     static_costmap_.updateOrigin(new_origin_x, new_origin_y);
     for(costmap_2d::Costmap2D& costmap : timed_costmaps_)
+    {
+      boost::unique_lock<Costmap2D::mutex_t> lock(*(costmap.getMutex()));
       costmap.updateOrigin(new_origin_x, new_origin_y);
+    }
   }
 
   if (plugins_.size() == 0)
@@ -154,7 +157,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
     }
     // We can't just skip timed plugins, since later plugins costs depend on previous ones, so a layers 
     // cost could change over time even if it is itself not timed (e.g. inflation layer) -> break.
-    else if((*plugin)->isTimed())
+    if((*plugin)->isTimed())
     {
       break;
     }
@@ -307,16 +310,8 @@ costmap_2d::Costmap2D* LayeredCostmap::getCostmap(double t)
 {
   if (timed_costmaps_.empty())
     return nullptr;
-  else if(timestep_ == 0)
-    return &timed_costmaps_.front();
-  int i = std::min((int)timed_costmaps_.size()-1, int(t/timestep_));  
+  unsigned int i = getTimeIndex(t); 
   return &timed_costmaps_[i];
-}
-
-// we're not using this rn...
-double LayeredCostmap::getTimestep() const
-{
-  return timestep_;
 }
 
 void LayeredCostmap::setFootprint(const std::vector<geometry_msgs::Point>& footprint_spec)

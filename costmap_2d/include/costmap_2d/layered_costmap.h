@@ -81,11 +81,7 @@ public:
 
   void getUpdatedBounds(double& minx, double& miny, double& maxx, double& maxy, double t = 0)
   {
-    int i;
-    if (timestep_ == 0)
-      i = 0;
-    else
-      i = std::min((int)timed_bounds_.size()-1, int(t/timestep_));
+    unsigned int i = getTimeIndex(t);
     minx = timed_bounds_[i].minx;
     miny = timed_bounds_[i].miny;
     maxx = timed_bounds_[i].maxx;
@@ -96,7 +92,15 @@ public:
 
   costmap_2d::Costmap2D* getCostmap(double t = 0.0);
 
-  double getTimestep() const;
+  unsigned int getTimeIndex(double t)
+  {
+    unsigned int i;
+    if (timestep_ <= 0 || prediction_time_ <= 0)
+      i = 0;
+    else
+      i = std::min((int)timed_bounds_.size()-1, (int)round(t/timestep_));
+    return i;
+  }
 
   bool isRolling()
   {
@@ -125,11 +129,7 @@ public:
 
   void getBounds(unsigned int* x0, unsigned int* xn, unsigned int* y0, unsigned int* yn, double t = 0.0)
   {
-    int i;
-    if (timestep_ == 0)
-      i = 0;
-    else
-      i = std::min((int)timed_bounds_.size()-1, int(t/timestep_));
+    unsigned int i = getTimeIndex(t);
     *x0 = timed_bounds_[i].bx0;
     *xn = timed_bounds_[i].bxn;
     *y0 = timed_bounds_[i].by0;
@@ -204,7 +204,7 @@ private:
   struct Costmap2DBounds
   {
     double minx, miny, maxx, maxy;
-    int bx0, bxn, by0, byn;
+    unsigned int bx0, bxn, by0, byn;
   };
   
   std::vector<Costmap2D> timed_costmaps_;
