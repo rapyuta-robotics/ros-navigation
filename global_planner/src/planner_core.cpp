@@ -323,25 +323,46 @@ uint32_t GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const 
       double best_sdist = DBL_MAX;
 
       unsigned int mx, my;
-      for(double dy = -tolerance; dy <= tolerance; dy += resolution){
-        p.pose.position.y = goal.pose.position.y + dy;
-        const double dx = std::sqrt(tolerance*tolerance - dy*dy);
-        for(p.pose.position.x = goal.pose.position.x - dx; p.pose.position.x <= goal.pose.position.x + dx; p.pose.position.x += resolution){
-            if(costmap_->worldToMap(p.pose.position.x, p.pose.position.y, mx, my)) {
-              unsigned int index = my * nx + mx;
-              double potential = potential_array_[index];
-              double sdist = sq_distance(p, goal);
-              ROS_FATAL_STREAM_COND(sdist > tolerance, "sampled pose is " << sdist << " away from the goal, which is above tolerance " << tolerance);
-              assert(sdist <= tolerance);
-              if(potential < POT_HIGH && sdist < best_sdist){
-                best_sdist = sdist;
-                best_pose = p;
-                found_legal = true;
-                goal_blocked = false;
-              } else if (costmap_->getCost(goal_x_i, goal_y_i) < costmap_2d::INSCRIBED_INFLATED_OBSTACLE) {
-                goal_blocked = false;
+
+      // reduce tolerance to ensure all poses are clearly inside the tolerance
+      const double tol_reduction = 1e-6 * std::max(std::abs(p.pose.position.x), std::abs(p.pose.position.y));
+      const double reduced_tolerance = tolerance - tol_reduction;
+
+      // sample denser than cell to not unnecessarily use up tolerance, and ensure at least 3 steps
+      const double step_size = std::min(0.5 * resolution, 0.3*tolerance);
+
+      // iterate from the boundary inwards, to ensure we sample close to the boundary without exceeding it
+      // start slightly inside the reduced tolerance, such that dx starts above 0
+      for(double dy = reduced_tolerance - tol_reduction; dy > 0; dy -= step_size) {
+        for(double dx = std::sqrt(reduced_tolerance*reduced_tolerance - dy*dy); dx > 0; dx -= step_size) {
+          for (const auto y_sign : {-1, 1}) {
+            p.pose.position.y = goal.pose.position.y + y_sign * dy;
+            for (const auto x_sign : {-1, 1}) {
+              p.pose.position.x = goal.pose.position.x + x_sign * dx;
+              if(costmap_->worldToMap(p.pose.position.x, p.pose.position.y, mx, my)) {
+                unsigned int index = my * nx + mx;
+                double potential = potential_array_[index];
+                double sdist = sq_distance(p, goal);
+                ROS_FATAL_STREAM_COND(sdist > tolerance, "sampled pose is " << sdist << " away from the goal, which is above tolerance " << tolerance);
+                assert(sdist <= tolerance);
+                if(potential < POT_HIGH && sdist < best_sdist){
+                  best_sdist = sdist;
+                  best_pose = p;
+                  found_legal = true;
+                  goal_blocked = false;
+                } else if (costmap_->getCost(goal_x_i, goal_y_i) < costmap_2d::INSCRIBED_INFLATED_OBSTACLE) {
+                  goal_blocked = false;
+                }
               }
+              ROS_FATAL_STREAM( "dx: " << x_sign*dx << " dy: " << y_sign * dy);
+
             }
+            const double diff = std::hypot(p.pose.position.x - goal.pose.position.x, dy);
+            ROS_FATAL_STREAM( "diff: " << std::hypot(p.pose.position.x - goal.pose.position.x, dy));
+
+            if (const auto diff = std::hypot(dx, dy); diff > 0.43)
+                ROS_ERROR_STREAM("diff: " << std::hypot(p.pose.position.x - goal.pose.position.x, dy));
+          }
         }
       }
 
