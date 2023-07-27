@@ -343,9 +343,9 @@ uint32_t GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const 
                 unsigned int index = my * nx + mx;
                 double potential = potential_array_[index];
                 double sdist = sq_distance(p, goal);
-                ROS_FATAL_STREAM_COND(sdist > tolerance, "sampled pose is " << sdist << " away from the goal, which is above tolerance " << tolerance);
-                assert(sdist <= tolerance);
-                if(potential < POT_HIGH && sdist < best_sdist){
+                ROS_ERROR_STREAM_COND(sdist > tolerance, "sampled pose is " << sdist << " away from the goal, which is above tolerance " << tolerance);
+                assert(sdist < tolerance);
+                if(potential < POT_HIGH && sdist < best_sdist && sdist < tolerance){
                   best_sdist = sdist;
                   best_pose = p;
                   found_legal = true;
@@ -354,14 +354,7 @@ uint32_t GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const 
                   goal_blocked = false;
                 }
               }
-              ROS_FATAL_STREAM( "dx: " << x_sign*dx << " dy: " << y_sign * dy);
-
             }
-            const double diff = std::hypot(p.pose.position.x - goal.pose.position.x, dy);
-            ROS_FATAL_STREAM( "diff: " << std::hypot(p.pose.position.x - goal.pose.position.x, dy));
-
-            if (const auto diff = std::hypot(dx, dy); diff > 0.43)
-                ROS_ERROR_STREAM("diff: " << std::hypot(p.pose.position.x - goal.pose.position.x, dy));
           }
         }
       }
