@@ -325,7 +325,8 @@ uint32_t GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const 
       unsigned int mx, my;
 
       // reduce tolerance to ensure all poses are clearly inside the tolerance
-      const double tol_reduction = 1e-6 * std::max(std::abs(p.pose.position.x), std::abs(p.pose.position.y));
+      // TODO: use constexpr T max( std::initializer_list<T> ilist ); (since C++14)
+      const double tol_reduction = 1e-6 * std::max(std::max(1.0, tolerance), std::max(std::abs(p.pose.position.x), std::abs(p.pose.position.y)));
       const double reduced_tolerance = tolerance - tol_reduction;
 
       // sample denser than cell to not unnecessarily use up tolerance, and ensure at least 3 steps
