@@ -328,7 +328,7 @@ uint32_t GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const 
       const double reduced_tolerance = tolerance - tol_reduction;
 
       // sample denser than cell to not unnecessarily use up tolerance, and ensure at least 5 sampled points
-      const double step_size = std::min(0.5 * resolution, 0.999*tolerance);
+      const double step_size = std::min(0.5 * resolution, 0.999*reduced_tolerance);
 
       unsigned int mx, my;
       for(double dy = -reduced_tolerance; dy <= reduced_tolerance; dy += step_size){
