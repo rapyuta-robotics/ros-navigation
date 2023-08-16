@@ -53,6 +53,7 @@
 
 #include <mbf_msgs/ExePathResult.h>
 #include <mbf_utility/navigation_utility.h>
+#include <visualization_msgs/MarkerArray.h>
 
 // register this planner as a MBF's CostmapController plugin
 PLUGINLIB_EXPORT_CLASS(dwa_local_planner::DWAPlannerROS, mbf_costmap_core::CostmapController)
@@ -102,7 +103,7 @@ namespace dwa_local_planner {
   }
 
   DWAPlannerROS::DWAPlannerROS() : initialized_(false),
-      odom_helper_("odom"), setup_(false), prev_vel_dir_(0), oscillating_(false), latched_inner_goal_(false) {
+      odom_helper_("odom"), setup_(false), prev_vel_dir_(0), oscillating_(false), latched_inner_goal_(false), world_model_(NULL){
 
   }
 
@@ -122,9 +123,12 @@ namespace dwa_local_planner {
       g_plan_pub_ = private_nh.advertise<nav_msgs::Path>("global_plan", 1);
       l_plan_pub_ = private_nh.advertise<nav_msgs::Path>("local_plan", 1);
       scaled_fp_pub_ = private_nh.advertise<visualization_msgs::Marker>("scaled_footprint", 1);
+      fp_pub_ = private_nh.advertise<visualization_msgs::MarkerArray>("footprints", 1);
       tf_ = tf;
       costmap_ros_ = costmap_ros;
       costmap_ros_->getRobotPose(current_pose_);
+
+      world_model_ = new base_local_planner::CostmapModel(*costmap_ros_->getCostmap());
 
       // make sure to update the costmap we'll use for this cycle
       costmap_2d::LayeredCostmap* layered_costmap = costmap_ros_->getLayeredCostmap();
@@ -261,6 +265,9 @@ namespace dwa_local_planner {
   DWAPlannerROS::~DWAPlannerROS(){
     //make sure to clean things up
     delete dsrv_;
+    if (world_model_ != NULL) {
+      delete world_model_;
+    }
   }
 
   void DWAPlannerROS::resetBestEffort() {
@@ -294,6 +301,47 @@ namespace dwa_local_planner {
     const bool bypassed_goal = std::inner_product(v1.begin(), v1.end(), v2.begin(), 0.0) < 0;
 
     return latched_inner_goal_ ||  bypassed_goal || oscillating_;
+  }
+
+  void DWAPlannerROS::publishFootprints(const std::vector<geometry_msgs::Point>& footprint,
+                                        const base_local_planner::Trajectory& traj) const
+  {
+    if (footprint.empty())
+    {
+      return;
+    }
+    visualization_msgs::MarkerArray footprint_marker;
+    double x, y, th, footprint_cost;
+    // loop through the trajectory 
+    for (unsigned int i = 0; i < traj.getPointsSize(); i++)
+    {
+      if (i % 2 != 0)
+      {
+        continue;
+      }
+      traj.getPoint(i, x, y, th);
+      std::vector<geometry_msgs::Point> oriented_footprint;
+      costmap_2d::transformFootprint(x, y, th, footprint, oriented_footprint);
+      footprint_cost = world_model_->footprintCost(current_pose_.pose.position, oriented_footprint, 0.0, 0.0);
+      visualization_msgs::Marker vertex_marker;
+      vertex_marker.header.frame_id = "map";
+      vertex_marker.header.stamp = ros::Time::now();
+      vertex_marker.type = visualization_msgs::Marker::LINE_STRIP;
+      vertex_marker.action = visualization_msgs::Marker::ADD;
+      vertex_marker.pose.orientation.w = 1;
+      vertex_marker.color.r = (footprint_cost < 0) ? 1.0 : footprint_cost / 255.;
+      vertex_marker.color.g = (footprint_cost >= 0) ? 1.0 : 1 - footprint_cost / 255.;
+      vertex_marker.color.b = 0.0;
+      vertex_marker.color.a = 1.0;
+      vertex_marker.scale.x = 0.01;
+      vertex_marker.id = i;
+      vertex_marker.lifetime = ros::Duration(1.);
+      oriented_footprint.push_back(oriented_footprint[0]);
+      vertex_marker.points = oriented_footprint;
+      footprint_marker.markers.push_back(vertex_marker);
+    }
+
+    fp_pub_.publish(footprint_marker);
   }
 
   uint32_t DWAPlannerROS::dwaComputeVelocityCommands(geometry_msgs::PoseStamped& global_pose,
@@ -388,6 +436,7 @@ namespace dwa_local_planner {
     //publish information to the visualizer
     publishScaledFootprint(global_pose, path);
     publishLocalPlan(local_plan);
+    publishFootprints(costmap_ros_->getRobotFootprint(), path);
     return mbf_msgs::ExePathResult::SUCCESS;
   }
 

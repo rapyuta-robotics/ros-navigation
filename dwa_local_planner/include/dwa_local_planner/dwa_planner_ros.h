@@ -50,6 +50,8 @@
 #include <nav_msgs/Odometry.h>
 
 #include <costmap_2d/costmap_2d_ros.h>
+
+#include <base_local_planner/costmap_model.h>
 #include <base_local_planner/latched_stop_rotate_controller.h>
 
 #include <base_local_planner/odometry_helper_ros.h>
@@ -181,21 +183,28 @@ namespace dwa_local_planner {
 
       void publishScaledFootprint(const geometry_msgs::PoseStamped& pose, const base_local_planner::Trajectory &traj) const;
 
+      /**
+       * @brief Publish robot footprint of even points on the chosen trajectory
+       */
+      void publishFootprints(const std::vector<geometry_msgs::Point>& footprint,
+                             const base_local_planner::Trajectory& traj) const;
+
       bool finishedBestEffort();
 
       void resetBestEffort();
 
       tf2_ros::Buffer* tf_; ///< @brief Used for transforming point clouds
 
-      // for visualisation, publishers of global and local plan
-      ros::Publisher g_plan_pub_, l_plan_pub_, scaled_fp_pub_;
+      // for visualisation, publishers of global plan, local plan, and also footprints
+      ros::Publisher g_plan_pub_, l_plan_pub_, scaled_fp_pub_, fp_pub_;
 
       base_local_planner::LocalPlannerUtil planner_util_;
 
       boost::shared_ptr<DWAPlanner> dp_; ///< @brief The trajectory controller
 
       costmap_2d::Costmap2DROS* costmap_ros_;
-
+      base_local_planner::WorldModel* world_model_;
+    
       dynamic_reconfigure::Server<DWAPlannerConfig> *dsrv_;
       dwa_local_planner::DWAPlannerConfig default_config_;
       base_local_planner::LocalPlannerLimits _latest_limits; ///< @brief latest limits set by dynamic reconfigure
