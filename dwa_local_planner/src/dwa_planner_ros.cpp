@@ -61,7 +61,7 @@ namespace dwa_local_planner {
 
   void DWAPlannerROS::reconfigureCB(DWAPlannerConfig &config, uint32_t level) {
       const std::lock_guard<std::mutex> lock(config_mtx_);
-      
+
       if (setup_ && config.restore_defaults) {
         config = default_config_;
         config.restore_defaults = false;
@@ -126,12 +126,12 @@ namespace dwa_local_planner {
       costmap_ros_ = costmap_ros;
       costmap_ros_->getRobotPose(current_pose_);
 
-      // make sure to update the costmap we'll use for this cycle
-      costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
+      // update our local copy of the costmap; we will update too before computing velocity commands
+      updateCostmap(costmap_ros_->getCostmap());
 
-      planner_util_.initialize(tf, costmap, costmap_ros_->getGlobalFrameID());
+      planner_util_.initialize(tf, &costmap_copy_, costmap_ros_->getGlobalFrameID());
 
-      //create the actual planner that we'll use.. it'll configure itself from the parameter server
+      // create the actual planner that we'll use.. it'll configure itself from the parameter server
       dp_ = boost::shared_ptr<DWAPlanner>(new DWAPlanner(name, &planner_util_));
 
       if( private_nh.getParam( "odom_topic", odom_topic_ ))
@@ -394,6 +394,8 @@ namespace dwa_local_planner {
   uint32_t DWAPlannerROS::computeVelocityCommands(const geometry_msgs::PoseStamped& pose,
                                                   const geometry_msgs::TwistStamped& velocity,
                                                   geometry_msgs::TwistStamped& cmd_vel, std::string& message) {
+    updateCostmap(costmap_ros_->getCostmap());
+
     // dispatches to either dwa sampling control or stop and rotate control, depending on whether we have been close enough to goal
     if ( ! costmap_ros_->getRobotPose(current_pose_)) {
       message = "Could not get robot pose";
@@ -429,7 +431,7 @@ namespace dwa_local_planner {
       if (!outer_goal_entry_) {
         outer_goal_entry_ = current_pose_;
       }
-      
+
       // check if we reached inner tolerance
       if (finishedBestEffort()) {
         //publish an empty plan because we've reached our goal position
@@ -483,5 +485,19 @@ namespace dwa_local_planner {
 
   }
 
+  void DWAPlannerROS::updateCostmap(costmap_2d::Costmap2D* master) {
+    boost::unique_lock<costmap_2d::Costmap2D::mutex_t> lock(*(master->getMutex()));
+    if (costmap_copy_.getSizeInCellsX() != master->getSizeInCellsX() ||
+        costmap_copy_.getSizeInCellsY() != master->getSizeInCellsY() ||
+        costmap_copy_.getResolution() != master->getResolution()) {
+       costmap_copy_.resizeMap(master->getSizeInCellsX(), master->getSizeInCellsY(), master->getResolution(),
+                               master->getOriginX(), master->getOriginY());
+    }
+    else {
+       costmap_copy_.updateOrigin(master->getOriginX(), master->getOriginY());
+    }
+    size_t mem_size = costmap_copy_.getSizeInCellsX() * costmap_copy_.getSizeInCellsY() * sizeof(unsigned char);
+    std::memcpy(costmap_copy_.getCharMap(), master->getCharMap(), mem_size);
+  }
 
 };
