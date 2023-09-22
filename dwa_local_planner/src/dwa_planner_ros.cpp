@@ -486,18 +486,8 @@ namespace dwa_local_planner {
   }
 
   void DWAPlannerROS::updateCostmap(costmap_2d::Costmap2D* master) {
-    boost::unique_lock<costmap_2d::Costmap2D::mutex_t> lock(*(master->getMutex()));
-    if (costmap_copy_.getSizeInCellsX() != master->getSizeInCellsX() ||
-        costmap_copy_.getSizeInCellsY() != master->getSizeInCellsY() ||
-        costmap_copy_.getResolution() != master->getResolution()) {
-       costmap_copy_.resizeMap(master->getSizeInCellsX(), master->getSizeInCellsY(), master->getResolution(),
-                               master->getOriginX(), master->getOriginY());
-    }
-    else {
-       costmap_copy_.updateOrigin(master->getOriginX(), master->getOriginY());
-    }
-    size_t mem_size = costmap_copy_.getSizeInCellsX() * costmap_copy_.getSizeInCellsY() * sizeof(unsigned char);
-    std::memcpy(costmap_copy_.getCharMap(), master->getCharMap(), mem_size);
+   boost::unique_lock<costmap_2d::Costmap2D::mutex_t> lock(*(master->getMutex()));
+   costmap_copy_ = *master;
   }
 
 };
