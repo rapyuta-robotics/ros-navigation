@@ -123,7 +123,7 @@ namespace dwa_local_planner {
       g_plan_pub_ = private_nh.advertise<nav_msgs::Path>("global_plan", 1);
       l_plan_pub_ = private_nh.advertise<nav_msgs::Path>("local_plan", 1);
       scaled_fp_pub_ = private_nh.advertise<visualization_msgs::Marker>("scaled_footprint", 1);
-      fp_pub_ = private_nh.advertise<visualization_msgs::MarkerArray>("footprints", 1);
+      projected_fp_pub_ = private_nh.advertise<visualization_msgs::MarkerArray>("projected_footprints", 1);
       tf_ = tf;
       costmap_ros_ = costmap_ros;
       costmap_ros_->getRobotPose(current_pose_);
@@ -144,6 +144,8 @@ namespace dwa_local_planner {
       }
 
       initialized_ = true;
+
+      private_nh.getParam("publish_projected_fp", publish_projected_fp_);
 
       // Warn about deprecated parameters -- remove this block in N-turtle
       nav_core::warnRenamedParameter(private_nh, "max_vel_trans", "max_trans_vel");
@@ -303,7 +305,7 @@ namespace dwa_local_planner {
     return latched_inner_goal_ ||  bypassed_goal || oscillating_;
   }
 
-  void DWAPlannerROS::publishFootprints(const std::vector<geometry_msgs::Point>& footprint,
+  void DWAPlannerROS::publishProjectedFootprints(const std::vector<geometry_msgs::Point>& footprint,
                                         const base_local_planner::Trajectory& traj) const
   {
     if (footprint.empty())
@@ -341,7 +343,7 @@ namespace dwa_local_planner {
       footprint_marker.markers.push_back(vertex_marker);
     }
 
-    fp_pub_.publish(footprint_marker);
+    projected_fp_pub_.publish(footprint_marker);
   }
 
   uint32_t DWAPlannerROS::dwaComputeVelocityCommands(geometry_msgs::PoseStamped& global_pose,
@@ -436,7 +438,10 @@ namespace dwa_local_planner {
     //publish information to the visualizer
     publishScaledFootprint(global_pose, path);
     publishLocalPlan(local_plan);
-    publishFootprints(costmap_ros_->getRobotFootprint(), path);
+    if (publish_projected_fp_)
+    {
+      publishProjectedFootprints(costmap_ros_->getRobotFootprint(), path);
+    }
     return mbf_msgs::ExePathResult::SUCCESS;
   }
 

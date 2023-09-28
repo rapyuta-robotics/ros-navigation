@@ -186,7 +186,7 @@ namespace dwa_local_planner {
       /**
        * @brief Publish robot footprint of even points on the chosen trajectory
        */
-      void publishFootprints(const std::vector<geometry_msgs::Point>& footprint,
+      void publishProjectedFootprints(const std::vector<geometry_msgs::Point>& footprint,
                              const base_local_planner::Trajectory& traj) const;
 
       bool finishedBestEffort();
@@ -196,7 +196,7 @@ namespace dwa_local_planner {
       tf2_ros::Buffer* tf_; ///< @brief Used for transforming point clouds
 
       // for visualisation, publishers of global plan, local plan, and also footprints
-      ros::Publisher g_plan_pub_, l_plan_pub_, scaled_fp_pub_, fp_pub_;
+      ros::Publisher g_plan_pub_, l_plan_pub_, scaled_fp_pub_, projected_fp_pub_;
 
       base_local_planner::LocalPlannerUtil planner_util_;
 
@@ -216,6 +216,8 @@ namespace dwa_local_planner {
       geometry_msgs::PoseStamped current_goal_;
 
       bool initialized_;
+
+      bool publish_projected_fp_ = false;
 
       double controller_frequency_; ///< Calling frequency to this plugin
 
