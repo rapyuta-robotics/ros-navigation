@@ -44,22 +44,13 @@
 
 namespace base_local_planner {
 
-ObstacleCostFunction::ObstacleCostFunction(costmap_2d::Costmap2D* costmap)
-    : costmap_(costmap), sum_scores_(false), sideward_inflation_scale_(1.0) {
-  if (costmap != NULL) {
-    world_model_ = new base_local_planner::CostmapModel(*costmap_);
-  }
+ObstacleCostFunction::ObstacleCostFunction(costmap_2d::LayeredCostmap* layered_costmap)
+    : layered_costmap_(layered_costmap), sum_scores_(false), sideward_inflation_scale_(1.0) {
 
   ros::NodeHandle pnh("~");
   sideward_inflation_scale_sub_ = pnh.subscribe<std_msgs::Float32>("sideward_inflation_scale", 1, [&](const std_msgs::Float32ConstPtr& msg){
     sideward_inflation_scale_ = msg->data;
   });
-}
-
-ObstacleCostFunction::~ObstacleCostFunction() {
-  if (world_model_ != NULL) {
-    delete world_model_;
-  }
 }
 
 
@@ -119,7 +110,7 @@ double ObstacleCostFunction::scoreTrajectory(Trajectory &traj) {
     traj.getPoint(i, px, py, pth);
     double f_cost = footprintCost(px, py, pth,
         scaled_footprint,
-        costmap_, world_model_);
+        layered_costmap_, i * traj.time_delta_); 
 
     if(f_cost < 0){
         return f_cost;
@@ -148,13 +139,20 @@ double ObstacleCostFunction::footprintCost (
     const double& y,
     const double& th,
     const std::vector<geometry_msgs::Point>& scaled_footprint,
-    costmap_2d::Costmap2D* costmap,
-    base_local_planner::WorldModel* world_model) {
+    costmap_2d::LayeredCostmap* layered_costmap,
+    double t) {
 
   //check if the footprint is legal
   // TODO: Cache inscribed radius
-  double footprint_cost = world_model->footprintCost(x, y, th, scaled_footprint);
+  costmap_2d::Costmap2D* costmap = layered_costmap->getCostmap(t);
 
+  if (costmap == NULL) {
+    return -10.0; // What to return ???????????
+  }
+  
+  base_local_planner::CostmapModel world_model(*costmap);
+  double footprint_cost = world_model.footprintCost(x, y, th, scaled_footprint);
+  
   if (footprint_cost < 0) {
     return -6.0;
   }

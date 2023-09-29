@@ -42,6 +42,7 @@
 
 #include <base_local_planner/costmap_model.h>
 #include <costmap_2d/costmap_2d.h>
+#include <costmap_2d/layered_costmap.h>
 
 namespace base_local_planner {
 
@@ -53,8 +54,7 @@ namespace base_local_planner {
 class ObstacleCostFunction : public TrajectoryCostFunction {
 
 public:
-  ObstacleCostFunction(costmap_2d::Costmap2D* costmap);
-  ~ObstacleCostFunction();
+  ObstacleCostFunction(costmap_2d::LayeredCostmap* layered_costmap);
 
   ExePathOutcome prepare(const geometry_msgs::PoseStamped& current_pose);
   double scoreTrajectory(Trajectory &traj);
@@ -72,13 +72,12 @@ public:
       const double& y,
       const double& th,
       const std::vector<geometry_msgs::Point>& scaled_footprint,
-      costmap_2d::Costmap2D* costmap,
-      base_local_planner::WorldModel* world_model);
+      costmap_2d::LayeredCostmap* layered_costmap,
+      double t = 0.0);
 
 private:
-  costmap_2d::Costmap2D* costmap_;
+  costmap_2d::LayeredCostmap* layered_costmap_;
   std::vector<geometry_msgs::Point> footprint_spec_;
-  base_local_planner::WorldModel* world_model_;
   double max_trans_vel_;
   bool sum_scores_;
   //footprint scaling with velocity;

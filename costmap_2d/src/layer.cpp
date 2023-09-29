@@ -36,6 +36,8 @@ Layer::Layer()
   : layered_costmap_(NULL)
   , current_(false)
   , enabled_(false)
+  , timed_(false)
+  , paint_only_current_time_(false)
   , name_()
   , tf_(NULL)
 {}

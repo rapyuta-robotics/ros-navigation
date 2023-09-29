@@ -43,11 +43,11 @@ namespace base_local_planner {
 
 void LocalPlannerUtil::initialize(
     tf2_ros::Buffer* tf,
-    costmap_2d::Costmap2D* costmap,
+    costmap_2d::LayeredCostmap* layered_costmap,
     std::string global_frame) {
   if(!initialized_) {
     tf_ = tf;
-    costmap_ = costmap;
+    layered_costmap_ = layered_costmap;    
     global_frame_ = global_frame;
     initialized_ = true;
   }
@@ -70,8 +70,12 @@ void LocalPlannerUtil::reconfigureCB(LocalPlannerLimits &config, bool restore_de
   limits_ = LocalPlannerLimits(config);
 }
 
-costmap_2d::Costmap2D* LocalPlannerUtil::getCostmap() {
-  return costmap_;
+costmap_2d::Costmap2D* LocalPlannerUtil::getCostmap(double t) {
+  return layered_costmap_->getCostmap(t);
+}
+
+costmap_2d::LayeredCostmap* LocalPlannerUtil::getLayeredCostmap() {
+  return layered_costmap_;
 }
 
 LocalPlannerLimits LocalPlannerUtil::getCurrentLimits() {
@@ -108,7 +112,7 @@ bool LocalPlannerUtil::getLocalPlan(const geometry_msgs::PoseStamped& global_pos
       *tf_,
       global_plan_,
       global_pose,
-      *costmap_,
+      *layered_costmap_->getCostmap(),
       global_frame_,
       transformed_plan)) {
     ROS_WARN("Could not transform the global plan to the frame of the controller");

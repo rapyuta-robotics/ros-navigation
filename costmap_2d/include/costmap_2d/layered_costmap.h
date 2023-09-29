@@ -56,9 +56,9 @@ class LayeredCostmap
 {
 public:
   /**
-   * @brief  Constructor for a costmap
+   * @brief  Constructor for a timed costmap
    */
-  LayeredCostmap(std::string global_frame, bool rolling_window, bool track_unknown);
+  LayeredCostmap(std::string global_frame, bool rolling_window, bool track_unknown, double prediction_time = 0.0, double timestep = 0.0);
 
   /**
    * @brief  Destructor
@@ -79,19 +79,27 @@ public:
   void resizeMap(unsigned int size_x, unsigned int size_y, double resolution, double origin_x, double origin_y,
                  bool size_locked = false);
 
-  void getUpdatedBounds(double& minx, double& miny, double& maxx, double& maxy)
+  void getUpdatedBounds(double& minx, double& miny, double& maxx, double& maxy, double t = 0)
   {
-    minx = minx_;
-    miny = miny_;
-    maxx = maxx_;
-    maxy = maxy_;
+    unsigned int i = getTimeIndex(t);
+    minx = timed_bounds_[i].minx;
+    miny = timed_bounds_[i].miny;
+    maxx = timed_bounds_[i].maxx;
+    maxy = timed_bounds_[i].maxy;
   }
 
   bool isCurrent();
 
-  Costmap2D* getCostmap()
+  costmap_2d::Costmap2D* getCostmap(double t = 0.0);
+
+  unsigned int getTimeIndex(double t)
   {
-    return &costmap_;
+    unsigned int i;
+    if (timestep_ <= 0 || prediction_time_ <= 0)
+      i = 0;
+    else
+      i = std::min((int)timed_bounds_.size()-1, (int)round(t/timestep_));
+    return i;
   }
 
   bool isRolling()
@@ -101,7 +109,7 @@ public:
 
   bool isTrackingUnknown()
   {
-    return costmap_.getDefaultValue() == costmap_2d::NO_INFORMATION;
+    return getCostmap()->getDefaultValue() == costmap_2d::NO_INFORMATION;
   }
 
   std::vector<boost::shared_ptr<Layer> >* getPlugins()
@@ -119,12 +127,13 @@ public:
     return size_locked_;
   }
 
-  void getBounds(unsigned int* x0, unsigned int* xn, unsigned int* y0, unsigned int* yn)
+  void getBounds(unsigned int* x0, unsigned int* xn, unsigned int* y0, unsigned int* yn, double t = 0.0)
   {
-    *x0 = bx0_;
-    *xn = bxn_;
-    *y0 = by0_;
-    *yn = byn_;
+    unsigned int i = getTimeIndex(t);
+    *x0 = timed_bounds_[i].bx0;
+    *xn = timed_bounds_[i].bxn;
+    *y0 = timed_bounds_[i].by0;
+    *yn = timed_bounds_[i].byn;
   }
 
   bool isInitialized()
@@ -154,15 +163,63 @@ public:
    * This is updated by setFootprint(). */
   double getInscribedRadius() { return inscribed_radius_; }
 
+protected:
+  /**
+   * ! Function copied from Costmap2D !
+   * To-Do: Modify function for this use-case
+   * @brief  Copy a region of a source map into a destination map
+   * @param  source_map The source map
+   * @param sm_lower_left_x The lower left x point of the source map to start the copy
+   * @param sm_lower_left_y The lower left y point of the source map to start the copy
+   * @param sm_size_x The x size of the source map
+   * @param  dest_map The destination map
+   * @param dm_lower_left_x The lower left x point of the destination map to start the copy
+   * @param dm_lower_left_y The lower left y point of the destination map to start the copy
+   * @param dm_size_x The x size of the destination map
+   * @param region_size_x The x size of the region to copy
+   * @param region_size_y The y size of the region to copy
+   */
+  template<typename data_type>
+    void copyMapRegion(data_type* source_map, unsigned int sm_lower_left_x, unsigned int sm_lower_left_y,
+                       unsigned int sm_size_x, data_type* dest_map, unsigned int dm_lower_left_x,
+                       unsigned int dm_lower_left_y, unsigned int dm_size_x, unsigned int region_size_x,
+                       unsigned int region_size_y)
+    {
+      // we'll first need to compute the starting points for each map
+      data_type* sm_index = source_map + (sm_lower_left_y * sm_size_x + sm_lower_left_x);
+      data_type* dm_index = dest_map + (dm_lower_left_y * dm_size_x + dm_lower_left_x);
+
+      // now, we'll copy the source map into the destination map
+      for (unsigned int i = 0; i < region_size_y; ++i)
+      {
+        memcpy(dm_index, sm_index, region_size_x * sizeof(data_type));
+        sm_index += sm_size_x;
+        dm_index += dm_size_x;
+      }
+    }
+
 private:
-  Costmap2D costmap_;
+
+  // Struct to store the bounds for each timed costmaps
+  struct Costmap2DBounds
+  {
+    double minx, miny, maxx, maxy;
+    unsigned int bx0, bxn, by0, byn;
+  };
+  
+  std::vector<Costmap2D> timed_costmaps_;
+  std::vector<Costmap2DBounds> timed_bounds_;
+
+  Costmap2D static_costmap_;
   std::string global_frame_;
 
   bool rolling_window_;  /// < @brief Whether or not the costmap should roll with the robot
 
   bool current_;
-  double minx_, miny_, maxx_, maxy_;
-  unsigned int bx0_, bxn_, by0_, byn_;
+
+  double static_minx_, static_miny_, static_maxx_, static_maxy_;  // Bounds for static costmap
+  int static_bx0_, static_bxn_, static_by0_, static_byn_;
+  double timestep_, prediction_time_; 
 
   std::vector<boost::shared_ptr<Layer> > plugins_;
 

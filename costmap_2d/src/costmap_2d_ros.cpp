@@ -75,6 +75,7 @@ Costmap2DROS::Costmap2DROS(const std::string& name, tf2_ros::Buffer& tf) :
     last_publish_(0),
     plugin_loader_("costmap_2d", "costmap_2d::Layer"),
     publisher_(NULL),
+    timed_publisher_(NULL),
     dsrv_(NULL),
     footprint_padding_(0.0)
 {
@@ -87,6 +88,15 @@ Costmap2DROS::Costmap2DROS(const std::string& name, tf2_ros::Buffer& tf) :
   // get global and robot base frame names
   private_nh.param("global_frame", global_frame_, std::string("map"));
   private_nh.param("robot_base_frame", robot_base_frame_, std::string("base_link"));
+
+// Get params for timed_costmap
+  private_nh.param("prediction_time", prediction_time_, 0.0);
+  private_nh.param("timestep", timestep_, 0.0);
+  if(prediction_time_ > 0 && timestep_ == 0)
+  {
+    timestep_ = 0.1;  // Default value?
+    ROS_WARN("%s/prediction_time is set to %.2fs, but %s/timestep is set to 0s... Using default value %.2fs for timestep instead", name.c_str(), prediction_time_, name.c_str(), timestep_);
+  }
 
   ros::Time last_error = ros::Time::now();
   std::string tf_error;
@@ -112,7 +122,7 @@ Costmap2DROS::Costmap2DROS(const std::string& name, tf2_ros::Buffer& tf) :
   private_nh.param("track_unknown_space", track_unknown_space, false);
   private_nh.param("always_send_full_costmap", always_send_full_costmap, false);
 
-  layered_costmap_ = new LayeredCostmap(global_frame_, rolling_window, track_unknown_space);
+  layered_costmap_ = new LayeredCostmap(global_frame_, rolling_window, track_unknown_space, prediction_time_, timestep_);
 
   if (!private_nh.hasParam("plugins"))
   {
@@ -162,6 +172,9 @@ Costmap2DROS::Costmap2DROS(const std::string& name, tf2_ros::Buffer& tf) :
   publisher_ = new Costmap2DPublisher(&private_nh, layered_costmap_->getCostmap(), global_frame_, "costmap",
                                       always_send_full_costmap);
 
+  // Publish future timed costmap (t = 5s) for debugging timed costmap (just for visualizing in rviz...)
+  timed_publisher_ = new Costmap2DPublisher(&private_nh, layered_costmap_->getCostmap(5), global_frame_, "timed_costmap",
+                                      always_send_full_costmap);
   // create a thread to handle updating the map
   stop_updates_ = false;
   initialized_ = true;
@@ -194,6 +207,9 @@ Costmap2DROS::~Costmap2DROS()
   }
   if (publisher_ != NULL)
     delete publisher_;
+
+  if (timed_publisher_ != NULL)
+    delete timed_publisher_;
 
   delete layered_costmap_;
   delete dsrv_;
@@ -463,12 +479,14 @@ void Costmap2DROS::mapUpdateLoop(double frequency)
       unsigned int x0, y0, xn, yn;
       layered_costmap_->getBounds(&x0, &xn, &y0, &yn);
       publisher_->updateBounds(x0, xn, y0, yn);
+      timed_publisher_->updateBounds(x0, xn, y0, yn);
 
       ros::Time now = ros::Time::now();
       ROS_WARN_COND(now < last_publish_, "ROS Time jumped backwards by %.3f s. Publishing costmaps anyway.", (last_publish_ - now).toSec());
       if (now < last_publish_ || last_publish_ + publish_cycle < now)
       {
         publisher_->publishCostmap();
+        timed_publisher_->publishCostmap();
         last_publish_ = now;
       }
     }
