@@ -185,6 +185,12 @@ namespace dwa_local_planner {
 
       void resetBestEffort();
 
+      /**
+       * Update our local copy of the costmap with the latest costs, minimizing the time we lock the master one
+       * @param master Pointer to the master costmap
+       */
+      void updateCostmap(costmap_2d::Costmap2D* master);
+
       tf2_ros::Buffer* tf_; ///< @brief Used for transforming point clouds
 
       // for visualisation, publishers of global and local plan
@@ -194,6 +200,7 @@ namespace dwa_local_planner {
 
       boost::shared_ptr<DWAPlanner> dp_; ///< @brief The trajectory controller
 
+      costmap_2d::Costmap2D costmap_copy_; ///< @brief Local copy of the costmap; used for scoring trajectories
       costmap_2d::Costmap2DROS* costmap_ros_;
 
       dynamic_reconfigure::Server<DWAPlannerConfig> *dsrv_;
