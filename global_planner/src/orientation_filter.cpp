@@ -98,24 +98,27 @@ void OrientationFilter::processPath(const geometry_msgs::PoseStamped& start,
             }
             break;
         case LEFTRIGHTWARD:
-            for(int i=0;i<n-1;i++){
+            for (int i = 0; i < n - 1; i++) {
                 setAngleBasedOnPositionDerivative(path, i);
-                set_angle(&path[i], angles::normalize_angle(tf2::getYaw(path[i].pose.orientation) - M_PI_2));
             }
-            if (n > 2){
-                // For paths with five poses or more, we take 2nd first and last poses instead of front and back,
-                // as the cell-connecting paths make first and last poses angles unreliable
-                // This is because the first pose (robot pose) will point to the closest cell's center, and the
-                // pre-last pose (also a cell center) will point to the goal pose
+            if (n > 2) {
                 const int num_skips = n >= 5 ? 2 : 1;
-                double start_to_path_theta = min_angle(start, *std::next(path.begin(), num_skips));
-                double path_to_goal_theta = min_angle(*std::prev(path.end(), 1 + num_skips), path.back());
-                bool prefer_backward = std::abs(start_to_path_theta) + std::abs(path_to_goal_theta) > M_PI;
-                if (prefer_backward){
-                    for(int i=0;i<n-1;i++){
-                        set_angle(&path[i], angles::normalize_angle(tf2::getYaw(path[i].pose.orientation) + M_PI));
-                    }
+                const double start_to_path_theta = tf2::getYaw(path[num_skips].pose.orientation);
+                const double path_to_goal_theta = tf2::getYaw(path[n - 1 - num_skips].pose.orientation);
+                const double start_orientation = tf2::getYaw(start.pose.orientation);
+                const double rotation_to_path = angles::shortest_angular_distance(start_orientation, start_to_path_theta);
+                const double rotation_to_goal = angles::shortest_angular_distance(start_orientation, path_to_goal_theta);
+
+                bool prefer_leftward = std::fabs(rotation_to_path - M_PI_2) < std::fabs(rotation_to_path + M_PI_2);
+
+                for (int i = 0; i < n - 1; i++) {
+                    const double path_orientation = tf2::getYaw(path[i].pose.orientation);
+                    const double adjusted_orientation = prefer_leftward ? path_orientation - M_PI_2 : path_orientation + M_PI_2;
+                    set_angle(&path[i], angles::normalize_angle(adjusted_orientation));
                 }
+
+                // Start orientation is set to face the initial path direction
+                set_angle(&path.front(), angles::normalize_angle(start_to_path_theta + (prefer_leftward ? -M_PI_2 : M_PI_2)));
             }
             break;
         case LEFTWARD:
