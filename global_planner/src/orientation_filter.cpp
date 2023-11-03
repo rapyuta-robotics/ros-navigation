@@ -97,6 +97,27 @@ void OrientationFilter::processPath(const geometry_msgs::PoseStamped& start,
                 }
             }
             break;
+        case LEFTRIGHTWARD:
+            for(int i=0;i<n-1;i++){
+                setAngleBasedOnPositionDerivative(path, i);
+                set_angle(&path[i], angles::normalize_angle(tf2::getYaw(path[i].pose.orientation) - M_PI_2));
+            }
+            if (n > 2){
+                // For paths with five poses or more, we take 2nd first and last poses instead of front and back,
+                // as the cell-connecting paths make first and last poses angles unreliable
+                // This is because the first pose (robot pose) will point to the closest cell's center, and the
+                // pre-last pose (also a cell center) will point to the goal pose
+                const int num_skips = n >= 5 ? 2 : 1;
+                double start_to_path_theta = min_angle(start, *std::next(path.begin(), num_skips));
+                double path_to_goal_theta = min_angle(*std::prev(path.end(), 1 + num_skips), path.back());
+                bool prefer_backward = std::abs(start_to_path_theta) + std::abs(path_to_goal_theta) > M_PI;
+                if (prefer_backward){
+                    for(int i=0;i<n-1;i++){
+                        set_angle(&path[i], angles::normalize_angle(tf2::getYaw(path[i].pose.orientation) + M_PI));
+                    }
+                }
+            }
+            break;
         case LEFTWARD:
             for(int i=0;i<n-1;i++){
                 setAngleBasedOnPositionDerivative(path, i);
@@ -107,6 +128,12 @@ void OrientationFilter::processPath(const geometry_msgs::PoseStamped& start,
             for(int i=0;i<n-1;i++){
                 setAngleBasedOnPositionDerivative(path, i);
                 set_angle(&path[i], angles::normalize_angle(tf2::getYaw(path[i].pose.orientation) + M_PI_2));
+            }
+            break;
+        case OMNI:
+            path[0].pose.orientation = start.pose.orientation;
+            for(int i=1;i<n-1;i++){
+                set_angle(&path[i], tf2::getYaw(path[i-1].pose.orientation));
             }
             break;
         case INTERPOLATE:
