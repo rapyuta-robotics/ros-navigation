@@ -103,22 +103,20 @@ void OrientationFilter::processPath(const geometry_msgs::PoseStamped& start,
             }
             if (n > 2) {
                 const int num_skips = n >= 5 ? 2 : 1;
-                const double start_to_path_theta = tf2::getYaw(path[num_skips].pose.orientation);
-                const double path_to_goal_theta = tf2::getYaw(path[n - 1 - num_skips].pose.orientation);
+                const double start_path_theta = tf2::getYaw(path[num_skips].pose.orientation);
+                const double goal_path_theta = tf2::getYaw(path[n - 1 - num_skips].pose.orientation);
                 const double start_orientation = tf2::getYaw(start.pose.orientation);
-                const double rotation_to_path = angles::shortest_angular_distance(start_orientation, start_to_path_theta);
-                const double rotation_to_goal = angles::shortest_angular_distance(start_orientation, path_to_goal_theta);
+                const double rotation_to_path = angles::shortest_angular_distance(start_orientation, start_path_theta);
+                const double rotation_to_goal = angles::shortest_angular_distance(start_orientation, goal_path_theta);
 
-                bool prefer_leftward = std::fabs(rotation_to_path - M_PI_2) < std::fabs(rotation_to_path + M_PI_2);
+                bool prefer_leftward = std::fabs(rotation_to_path - M_PI_2) + std::fabs(rotation_to_goal - M_PI_2) < 
+                                       std::fabs(rotation_to_path + M_PI_2) + std::fabs(rotation_to_goal + M_PI_2);
 
                 for (int i = 0; i < n - 1; i++) {
                     const double path_orientation = tf2::getYaw(path[i].pose.orientation);
                     const double adjusted_orientation = prefer_leftward ? path_orientation - M_PI_2 : path_orientation + M_PI_2;
                     set_angle(&path[i], angles::normalize_angle(adjusted_orientation));
                 }
-
-                // Start orientation is set to face the initial path direction
-                set_angle(&path.front(), angles::normalize_angle(start_to_path_theta + (prefer_leftward ? -M_PI_2 : M_PI_2)));
             }
             break;
         case LEFTWARD:
@@ -190,7 +188,6 @@ void OrientationFilter::interpolate(std::vector<geometry_msgs::PoseStamped>& pat
         double angle = start_yaw + increment * i;
         set_angle(&path[i], angle);
     }
-}
-                                   
+}                                
 
 };
