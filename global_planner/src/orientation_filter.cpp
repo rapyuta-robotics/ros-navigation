@@ -103,13 +103,10 @@ void OrientationFilter::processPath(const geometry_msgs::PoseStamped& start,
             }
             if (n > 2) {
                 const int num_skips = n >= 5 ? 2 : 1;
-                const double start_path_theta = tf2::getYaw(path[num_skips].pose.orientation);
-                const double goal_path_theta = tf2::getYaw(path[n - 1 - num_skips].pose.orientation);
-                const double start_orientation = tf2::getYaw(start.pose.orientation);
-                const double rotation_to_path = angles::shortest_angular_distance(start_orientation, start_path_theta);
-                const double rotation_to_goal = angles::shortest_angular_distance(start_orientation, goal_path_theta);
+                const double rotation_to_path =  min_angle(start, *std::next(path.begin(), num_skips));
+                const double rotation_to_goal =  min_angle(*std::prev(path.end(), 1 + num_skips), path.back());
 
-                bool prefer_leftward = 
+                const bool prefer_leftward = 
                     std::fabs(angles::normalize_angle(rotation_to_path - M_PI_2)) + std::fabs(angles::normalize_angle(rotation_to_goal - M_PI_2)) < 
                     std::fabs(angles::normalize_angle(rotation_to_path + M_PI_2)) + std::fabs(angles::normalize_angle(rotation_to_goal + M_PI_2));
 
@@ -132,10 +129,9 @@ void OrientationFilter::processPath(const geometry_msgs::PoseStamped& start,
                 set_angle(&path[i], angles::normalize_angle(tf2::getYaw(path[i].pose.orientation) + M_PI_2));
             }
             break;
-        case OMNI:
-            path[0].pose.orientation = start.pose.orientation;
-            for(int i=1;i<n-1;i++){
-                set_angle(&path[i], tf2::getYaw(path[i-1].pose.orientation));
+        case FIXEDORIENTATION:
+            for(int i=0;i<n-1;i++){
+                path[i].pose.orientation = start.pose.orientation;
             }
             break;
         case INTERPOLATE:
