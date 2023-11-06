@@ -97,7 +97,7 @@ void OrientationFilter::processPath(const geometry_msgs::PoseStamped& start,
                 }
             }
             break;
-        case LEFTRIGHTWARD:
+        case SIDEWARD:
             for (int i = 0; i < n - 1; i++) {
                 setAngleBasedOnPositionDerivative(path, i);
             }
@@ -109,8 +109,9 @@ void OrientationFilter::processPath(const geometry_msgs::PoseStamped& start,
                 const double rotation_to_path = angles::shortest_angular_distance(start_orientation, start_path_theta);
                 const double rotation_to_goal = angles::shortest_angular_distance(start_orientation, goal_path_theta);
 
-                bool prefer_leftward = std::fabs(rotation_to_path - M_PI_2) + std::fabs(rotation_to_goal - M_PI_2) < 
-                                       std::fabs(rotation_to_path + M_PI_2) + std::fabs(rotation_to_goal + M_PI_2);
+                bool prefer_leftward = 
+                    std::fabs(angles::normalize_angle(rotation_to_path - M_PI_2)) + std::fabs(angles::normalize_angle(rotation_to_goal - M_PI_2)) < 
+                    std::fabs(angles::normalize_angle(rotation_to_path + M_PI_2)) + std::fabs(angles::normalize_angle(rotation_to_goal + M_PI_2));
 
                 for (int i = 0; i < n - 1; i++) {
                     const double path_orientation = tf2::getYaw(path[i].pose.orientation);
