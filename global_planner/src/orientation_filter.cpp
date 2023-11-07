@@ -107,8 +107,8 @@ void OrientationFilter::processPath(const geometry_msgs::PoseStamped& start,
                 const double rotation_to_goal =  min_angle(*std::prev(path.end(), 1 + num_skips), path.back());
 
                 const bool prefer_leftward = 
-                    std::fabs(angles::normalize_angle(rotation_to_path - M_PI_2)) + std::fabs(angles::normalize_angle(rotation_to_goal - M_PI_2)) < 
-                    std::fabs(angles::normalize_angle(rotation_to_path + M_PI_2)) + std::fabs(angles::normalize_angle(rotation_to_goal + M_PI_2));
+                    std::fabs(angles::normalize_angle(rotation_to_path - M_PI_2)) + std::fabs(angles::normalize_angle(rotation_to_goal + M_PI_2)) < 
+                    std::fabs(angles::normalize_angle(rotation_to_path + M_PI_2)) + std::fabs(angles::normalize_angle(rotation_to_goal - M_PI_2));
 
                 for (int i = 0; i < n - 1; i++) {
                     const double path_orientation = tf2::getYaw(path[i].pose.orientation);
@@ -185,6 +185,7 @@ void OrientationFilter::interpolate(std::vector<geometry_msgs::PoseStamped>& pat
         double angle = start_yaw + increment * i;
         set_angle(&path[i], angle);
     }
-}                                
+}
+
 
 };
