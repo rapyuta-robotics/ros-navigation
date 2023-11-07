@@ -103,12 +103,12 @@ void OrientationFilter::processPath(const geometry_msgs::PoseStamped& start,
             }
             if (n > 2) {
                 const int num_skips = n >= 5 ? 2 : 1;
-                const double rotation_to_path =  min_angle(start, *std::next(path.begin(), num_skips));
-                const double rotation_to_goal =  min_angle(*std::prev(path.end(), 1 + num_skips), path.back());
+                const double start_to_path_theta =  min_angle(start, *std::next(path.begin(), num_skips));
+                const double path_to_goal_theta =  min_angle(*std::prev(path.end(), 1 + num_skips), path.back());
 
                 const bool prefer_leftward = 
-                    std::fabs(angles::normalize_angle(rotation_to_path - M_PI_2)) + std::fabs(angles::normalize_angle(rotation_to_goal + M_PI_2)) < 
-                    std::fabs(angles::normalize_angle(rotation_to_path + M_PI_2)) + std::fabs(angles::normalize_angle(rotation_to_goal - M_PI_2));
+                    std::fabs(angles::normalize_angle(start_to_path_theta - M_PI_2)) + std::fabs(angles::normalize_angle(path_to_goal_theta + M_PI_2)) < 
+                    std::fabs(angles::normalize_angle(start_to_path_theta + M_PI_2)) + std::fabs(angles::normalize_angle(path_to_goal_theta - M_PI_2));
 
                 for (int i = 0; i < n - 1; i++) {
                     const double path_orientation = tf2::getYaw(path[i].pose.orientation);
