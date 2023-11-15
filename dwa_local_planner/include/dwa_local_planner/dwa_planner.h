@@ -161,9 +161,10 @@ namespace dwa_local_planner {
       /**
        * @brief Gets the footprint of the robot scaled by the given trajectory
        * @param traj Trajectory to evaluate
+       * @param index Index of the point in the trajectory to evaluate
        * @return Scaled footprint
        */
-      std::vector<geometry_msgs::Point> getScaledFootprint(const base_local_planner::Trajectory &traj) const;
+      std::vector<geometry_msgs::Point> getScaledFootprint(const base_local_planner::Trajectory& traj, unsigned int index = 0) const;
 
     private:
       /**

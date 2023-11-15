@@ -61,9 +61,10 @@ public:
 
   void setSumScores(bool score_sums){ sum_scores_=score_sums; }
 
-  void setParams(double max_trans_vel, double max_forward_inflation, double max_sideward_inflation, double scaling_speed, bool occdist_use_footprint = true);
+  void setParams(double max_trans_vel, double max_forward_inflation, double max_sideward_inflation,
+                 double scaling_speed, bool occdist_use_footprint = true, double scaling_discount_factor = 1.0);
   void setFootprint(std::vector<geometry_msgs::Point> footprint_spec);
-  std::vector<geometry_msgs::Point> getScaledFootprint(const Trajectory& traj) const;
+  std::vector<geometry_msgs::Point> getScaledFootprint(const Trajectory& traj, unsigned int index = 0) const;
 
   // helper functions, made static for easy unit testing
   static double getScalingFactor(const Trajectory &traj, double scaling_speed, double max_trans_vel);
@@ -87,6 +88,7 @@ private:
   ros::Subscriber sideward_inflation_scale_sub_;
   std::atomic<double> sideward_inflation_scale_;
   bool occdist_use_footprint_;
+  double scaling_discount_factor_;
 };
 
 } /* namespace base_local_planner */
