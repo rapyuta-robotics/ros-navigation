@@ -246,6 +246,10 @@ namespace dwa_local_planner {
   }
 
   void DWAPlannerROS::publishScaledFootprint(const base_local_planner::Trajectory& traj) const {
+    if (scaled_fp_pub_.getNumSubscribers() == 0) {
+      return;
+    }
+
     visualization_msgs::MarkerArray markers;
 
     for (size_t i = 0; i < traj.getPointsSize(); ++i) {

@@ -63,7 +63,7 @@ ObstacleCostFunction::~ObstacleCostFunction() {
 }
 
 void ObstacleCostFunction::setParams(double max_trans_vel, double max_forward_inflation, double max_sideward_inflation,
-                                     double scaling_speed, bool occdist_use_footprint, double scaling_discount_factor) {
+                                     double scaling_speed, double scaling_discount_factor, bool occdist_use_footprint) {
   // TODO: move this to prepare if possible
   max_trans_vel_ = max_trans_vel;
   max_forward_inflation_ = max_forward_inflation;
