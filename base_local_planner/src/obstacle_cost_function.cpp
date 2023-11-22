@@ -80,7 +80,13 @@ void ObstacleCostFunction::setFootprint(std::vector<geometry_msgs::Point> footpr
 std::vector<geometry_msgs::Point> ObstacleCostFunction::getScaledFootprint(const Trajectory& traj, unsigned int index) const {
   index = std::min(index, traj.getPointsSize() - 1);
   std::vector<geometry_msgs::Point> scaled_footprint = footprint_spec_;
-  const double scale = std::pow(scaling_discount_factor_, index) * getScalingFactor(traj, scaling_speed_, max_trans_vel_);
+
+  // scaling_discount_factor is the discount factor applied to the last point in the trajectory
+  // so we need to compute the discount factor gamma to apply to the given index
+  const double max_index = std::max(traj.getPointsSize() - 1, 1u);
+  const double gamma = std::pow(scaling_discount_factor_, index / max_index);
+
+  const double scale = gamma * getScalingFactor(traj, scaling_speed_, max_trans_vel_);
   if (scale != 0.0) {
     const bool fwd = traj.xv_ > 0;
     const double forward_inflation = scale * max_forward_inflation_;
