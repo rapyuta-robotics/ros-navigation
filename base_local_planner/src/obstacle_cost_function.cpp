@@ -62,23 +62,31 @@ ObstacleCostFunction::~ObstacleCostFunction() {
   }
 }
 
-
-void ObstacleCostFunction::setParams(double max_trans_vel, double max_forward_inflation, double max_sideward_inflation, double scaling_speed, bool occdist_use_footprint) {
+void ObstacleCostFunction::setParams(double max_trans_vel, double max_forward_inflation, double max_sideward_inflation,
+                                     double scaling_speed, double scaling_discount_factor, bool occdist_use_footprint) {
   // TODO: move this to prepare if possible
   max_trans_vel_ = max_trans_vel;
   max_forward_inflation_ = max_forward_inflation;
   max_sideward_inflation_ = max_sideward_inflation;
   scaling_speed_ = scaling_speed;
   occdist_use_footprint_ = occdist_use_footprint;
+  scaling_discount_factor_ = scaling_discount_factor;
 }
 
 void ObstacleCostFunction::setFootprint(std::vector<geometry_msgs::Point> footprint_spec) {
   footprint_spec_ = footprint_spec;
 }
 
-std::vector<geometry_msgs::Point> ObstacleCostFunction::getScaledFootprint(const Trajectory& traj) const {
+std::vector<geometry_msgs::Point> ObstacleCostFunction::getScaledFootprint(const Trajectory& traj, unsigned int index) const {
+  index = std::min(index, traj.getPointsSize() - 1);
   std::vector<geometry_msgs::Point> scaled_footprint = footprint_spec_;
-  const double scale = getScalingFactor(traj, scaling_speed_, max_trans_vel_);
+
+  // scaling_discount_factor is the discount factor applied to the last point in the trajectory
+  // so we need to compute the discount factor gamma to apply to the given index
+  const double max_index = std::max(traj.getPointsSize() - 1, 1u);
+  const double gamma = std::pow(scaling_discount_factor_, index / max_index);
+
+  const double scale = gamma * getScalingFactor(traj, scaling_speed_, max_trans_vel_);
   if (scale != 0.0) {
     const bool fwd = traj.xv_ > 0;
     const double forward_inflation = scale * max_forward_inflation_;
@@ -110,12 +118,11 @@ double ObstacleCostFunction::scoreTrajectory(Trajectory &traj) {
     return -9;
   }
 
-  std::vector<geometry_msgs::Point> scaled_footprint = getScaledFootprint(traj);
-
    const unsigned int point_size = traj.getPointsSize();
   // ignore first trajectory point since it is the same for all trajectories,
   // unless trajectory only contains one point
   for (unsigned int i = point_size > 1 ? 1 : 0; i < point_size; ++i) {
+    const auto scaled_footprint = getScaledFootprint(traj, i);
     traj.getPoint(i, px, py, pth);
     double f_cost = footprintCost(px, py, pth,
         scaled_footprint,

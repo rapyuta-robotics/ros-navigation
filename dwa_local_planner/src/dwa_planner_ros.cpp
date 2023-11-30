@@ -46,6 +46,7 @@
 #include <base_local_planner/goal_functions.h>
 #include <nav_msgs/Path.h>
 #include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
 #include <tf2/utils.h>
 #include <numeric>
 
@@ -121,7 +122,7 @@ namespace dwa_local_planner {
       ros::NodeHandle private_nh("~/" + name);
       g_plan_pub_ = private_nh.advertise<nav_msgs::Path>("global_plan", 1);
       l_plan_pub_ = private_nh.advertise<nav_msgs::Path>("local_plan", 1);
-      scaled_fp_pub_ = private_nh.advertise<visualization_msgs::Marker>("scaled_footprint", 1);
+      scaled_fp_pub_ = private_nh.advertise<visualization_msgs::MarkerArray>("scaled_footprint", 1);
       tf_ = tf;
       costmap_ros_ = costmap_ros;
       costmap_ros_->getRobotPose(current_pose_);
@@ -244,18 +245,43 @@ namespace dwa_local_planner {
     base_local_planner::publishPlan(path, g_plan_pub_);
   }
 
-  void DWAPlannerROS::publishScaledFootprint(const geometry_msgs::PoseStamped& pose, const base_local_planner::Trajectory &traj) const {
-    visualization_msgs::Marker marker;
-    marker.header.frame_id = pose.header.frame_id;
-    marker.header.stamp = ros::Time::now();
-    marker.lifetime = ros::Duration(2 * dp_->getSimPeriod()); // double the sim period to avoid flickering
-    marker.type = visualization_msgs::Marker::LINE_STRIP;
-    marker.pose = pose.pose;
-    marker.scale.x = 0.01;
-    marker.color.g = marker.color.a = 1.0; // green
-    marker.points = dp_->getScaledFootprint(traj);
-    marker.points.push_back(marker.points.front()); // close the polygon
-    scaled_fp_pub_.publish(marker);
+  void DWAPlannerROS::publishScaledFootprint(const base_local_planner::Trajectory& traj) const {
+    if (scaled_fp_pub_.getNumSubscribers() == 0) {
+      return;
+    }
+
+    visualization_msgs::MarkerArray markers;
+
+    for (size_t i = 0; i < traj.getPointsSize(); ++i) {
+      visualization_msgs::Marker marker;
+      marker.header.frame_id = costmap_ros_->getGlobalFrameID();
+      marker.header.stamp = ros::Time::now();
+      marker.ns = i == 0 ? "current_footprint" : "future_footprints";
+      marker.id = i;
+      marker.lifetime = ros::Duration(2 * dp_->getSimPeriod());  // double the sim period to avoid flickering
+      marker.type = visualization_msgs::Marker::LINE_STRIP;
+
+      double yaw = 0;
+      traj.getPoint(i, marker.pose.position.x, marker.pose.position.y, yaw);
+      tf2::Quaternion quat_tf;
+      quat_tf.setRPY(0, 0, yaw);
+      marker.pose.orientation = tf2::toMsg(quat_tf);
+
+      // gradient: green -> yellow -> red
+      // https://stackoverflow.com/a/7947812
+      const double ratio = i / static_cast<double>(traj.getPointsSize() - 1);
+      marker.color.a = 1.0;
+      marker.color.r = std::min(2 * ratio, 1.0);
+      marker.color.g = std::min(2 * (1.0 - ratio), 1.0);
+      marker.scale.x = 0.01;
+
+      marker.points = dp_->getScaledFootprint(traj, i);
+      marker.points.push_back(marker.points.front());  // close the polygon
+
+      markers.markers.push_back(marker);
+    }
+
+    scaled_fp_pub_.publish(markers);
   }
 
   DWAPlannerROS::~DWAPlannerROS(){
@@ -386,7 +412,7 @@ namespace dwa_local_planner {
     }
 
     //publish information to the visualizer
-    publishScaledFootprint(global_pose, path);
+    publishScaledFootprint(path);
     publishLocalPlan(local_plan);
     return mbf_msgs::ExePathResult::SUCCESS;
   }

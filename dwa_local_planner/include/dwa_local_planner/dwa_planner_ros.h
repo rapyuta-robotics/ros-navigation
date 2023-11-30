@@ -179,7 +179,7 @@ namespace dwa_local_planner {
 
       void publishGlobalPlan(std::vector<geometry_msgs::PoseStamped>& path);
 
-      void publishScaledFootprint(const geometry_msgs::PoseStamped& pose, const base_local_planner::Trajectory &traj) const;
+      void publishScaledFootprint(const base_local_planner::Trajectory& traj) const;
 
       bool finishedBestEffort();
 
