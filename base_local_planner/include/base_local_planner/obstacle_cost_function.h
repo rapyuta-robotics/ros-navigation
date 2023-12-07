@@ -85,8 +85,10 @@ private:
   //footprint scaling with velocity;
   double max_forward_inflation_, max_sideward_inflation_, scaling_speed_;
 
-  ros::Subscriber sideward_inflation_scale_sub_;
-  std::atomic<double> sideward_inflation_scale_;
+  ros::Subscriber sideward_inflation_scale_left_sub_;
+  ros::Subscriber sideward_inflation_scale_right_sub_;
+  std::atomic<double> sideward_inflation_scale_left_;
+  std::atomic<double> sideward_inflation_scale_right_;
   bool occdist_use_footprint_;
   double scaling_discount_factor_;
 };
