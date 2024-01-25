@@ -65,6 +65,12 @@ public:
   /** @brief Include the given bounds in the changed-rectangle. */
   void updateBounds(unsigned int x0, unsigned int xn, unsigned int y0, unsigned int yn)
   {
+    {
+      boost::unique_lock<Costmap2D::mutex_t> lock(*(costmap_->getMutex()));
+      costmap_->mapToWorld(x0, y0, last_min_x_, last_min_y_);
+      costmap_->mapToWorld(xn, yn, last_max_x_, last_max_y_);
+    }
+
     x0_ = std::min(x0, x0_);
     xn_ = std::max(xn, xn_);
     y0_ = std::min(y0, y0_);
@@ -75,6 +81,11 @@ public:
    * @brief  Publishes the visualization data over ROS
    */
   void publishCostmap();
+
+  /**
+   * @brief Publishes the bounds of the latest costmap update.
+   */
+  void publishBounds();
 
   /**
    * @brief Check if the publisher is active
@@ -96,11 +107,13 @@ private:
   Costmap2D* costmap_;
   std::string global_frame_;
   unsigned int x0_, xn_, y0_, yn_;
+  double last_min_x_, last_max_x_, last_min_y_, last_max_y_;
   double saved_origin_x_, saved_origin_y_;
   bool active_;
   bool always_send_full_costmap_;
   ros::Publisher costmap_pub_;
   ros::Publisher costmap_update_pub_;
+  ros::Publisher bounds_pub_;
   nav_msgs::OccupancyGrid grid_;
   static char* cost_translation_table_;  ///< Translate from 0-255 values in costmap to -1 to 100 values in message.
 };
