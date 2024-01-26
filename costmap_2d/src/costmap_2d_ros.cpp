@@ -447,7 +447,7 @@ void Costmap2DROS::mapUpdateLoop(double frequency)
     double start_t, end_t, t_diff;
     gettimeofday(&start, NULL);
     #endif
-    
+
     updateMap();
 
     #ifdef HAVE_SYS_TIME_H
@@ -457,7 +457,7 @@ void Costmap2DROS::mapUpdateLoop(double frequency)
     t_diff = end_t - start_t;
     ROS_DEBUG("Map update time: %.9f", t_diff);
     #endif
-    
+
     if (publish_cycle.toSec() > 0 && layered_costmap_->isInitialized())
     {
       unsigned int x0, y0, xn, yn;
@@ -469,6 +469,7 @@ void Costmap2DROS::mapUpdateLoop(double frequency)
       if (now < last_publish_ || last_publish_ + publish_cycle < now)
       {
         publisher_->publishCostmap();
+        publisher_->publishBounds();
         last_publish_ = now;
       }
     }

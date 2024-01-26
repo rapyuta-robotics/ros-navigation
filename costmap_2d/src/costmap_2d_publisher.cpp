@@ -38,6 +38,7 @@
 #include <boost/bind.hpp>
 #include <costmap_2d/costmap_2d_publisher.h>
 #include <costmap_2d/cost_values.h>
+#include <geometry_msgs/PolygonStamped.h>
 
 namespace costmap_2d
 {
@@ -52,6 +53,7 @@ Costmap2DPublisher::Costmap2DPublisher(ros::NodeHandle * ros_node, Costmap2D* co
   costmap_pub_ = ros_node->advertise<nav_msgs::OccupancyGrid>(topic_name, 1,
                                                     boost::bind(&Costmap2DPublisher::onNewSubscription, this, _1));
   costmap_update_pub_ = ros_node->advertise<map_msgs::OccupancyGridUpdate>(topic_name + "_updates", 1);
+  bounds_pub_ = ros_node->advertise<geometry_msgs::PolygonStamped>(topic_name + "_bounds", 1);
 
   if (cost_translation_table_ == NULL)
   {
@@ -74,6 +76,9 @@ Costmap2DPublisher::Costmap2DPublisher(ros::NodeHandle * ros_node, Costmap2D* co
   xn_ = yn_ = 0;
   x0_ = costmap_->getSizeInCellsX();
   y0_ = costmap_->getSizeInCellsY();
+  last_max_x_ = last_max_y_ = 0;
+  last_min_x_ = costmap_->getSizeInMetersX();
+  last_min_y_ = costmap_->getSizeInMetersY();
 }
 
 Costmap2DPublisher::~Costmap2DPublisher()
@@ -164,6 +169,33 @@ void Costmap2DPublisher::publishCostmap()
   xn_ = yn_ = 0;
   x0_ = costmap_->getSizeInCellsX();
   y0_ = costmap_->getSizeInCellsY();
+}
+
+void Costmap2DPublisher::publishBounds()
+{
+  if (bounds_pub_.getNumSubscribers() == 0 || last_max_x_ < last_min_x_ || last_max_y_ < last_min_y_)
+  {
+    return;
+  }
+
+  geometry_msgs::PolygonStamped msg;
+  msg.header.stamp = ros::Time::now();
+  msg.header.frame_id = global_frame_;
+  msg.polygon.points.resize(4);
+
+  msg.polygon.points[0].x = last_min_x_;
+  msg.polygon.points[0].y = last_min_y_;
+
+  msg.polygon.points[1].x = last_min_x_;
+  msg.polygon.points[1].y = last_max_y_;
+
+  msg.polygon.points[2].x = last_max_x_;
+  msg.polygon.points[2].y = last_max_y_;
+
+  msg.polygon.points[3].x = last_max_x_;
+  msg.polygon.points[3].y = last_min_y_;
+
+  bounds_pub_.publish(msg);
 }
 
 }  // end namespace costmap_2d
