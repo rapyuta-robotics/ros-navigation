@@ -209,7 +209,7 @@ bool makeFootprintFromString(const std::string& footprint_string, std::vector<ge
 
 
 
-std::vector<geometry_msgs::Point> makeFootprintFromParams(ros::NodeHandle& nh)
+std::pair<std::vector<geometry_msgs::Point>, bool> makeFootprintFromParams(ros::NodeHandle& nh)
 {
   std::string full_param_name;
   std::string full_radius_param_name;
@@ -225,14 +225,14 @@ std::vector<geometry_msgs::Point> makeFootprintFromParams(ros::NodeHandle& nh)
       if (makeFootprintFromString(std::string(footprint_xmlrpc), points))
       {
         writeFootprintToParam(nh, points);
-        return points;
+        return { points, false };
       }
     }
     else if (footprint_xmlrpc.getType() == XmlRpc::XmlRpcValue::TypeArray)
     {
       points = makeFootprintFromXMLRPC(footprint_xmlrpc, full_param_name);
       writeFootprintToParam(nh, points);
-      return points;
+      return { points, false };
     }
   }
 
@@ -246,7 +246,7 @@ std::vector<geometry_msgs::Point> makeFootprintFromParams(ros::NodeHandle& nh)
   // Else neither param was found anywhere this knows about, so
   // defaults will come from dynamic_reconfigure stuff, set in
   // cfg/Costmap2D.cfg and read in this file in reconfigureCB().
-  return points;
+  return { points, true };
 }
 
 void writeFootprintToParam(ros::NodeHandle& nh, const std::vector<geometry_msgs::Point>& footprint)

@@ -235,6 +235,14 @@ public:
    * getUnpaddedRobotFootprint(). */
   void setUnpaddedRobotFootprintPolygon(const geometry_msgs::Polygon& footprint);
 
+  /**
+   * @brief  Get the costmap's use_radius_ parameter, corresponding to
+   * whether the footprint for the robot is a circle with radius robot_radius_
+   * or an arbitrarily defined footprint in footprint_.
+   * @return  use_radius_
+   */
+  bool getUseRadius() { return use_radius_; }
+
 protected:
   LayeredCostmap* layered_costmap_;
   std::string name_;
@@ -273,6 +281,7 @@ private:
 
   ros::Subscriber footprint_sub_;
   ros::Publisher footprint_pub_;
+  bool use_radius_;
   std::vector<geometry_msgs::Point> unpadded_footprint_;
   std::vector<geometry_msgs::Point> padded_footprint_;
   float footprint_padding_;
