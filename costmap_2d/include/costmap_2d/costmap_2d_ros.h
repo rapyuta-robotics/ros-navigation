@@ -241,7 +241,7 @@ public:
    * or an arbitrarily defined footprint in footprint_.
    * @return  use_radius_
    */
-  bool getUseRadius() { return use_radius_; }
+  bool getUseRadius() const noexcept { return use_radius_; }
 
 protected:
   LayeredCostmap* layered_costmap_;

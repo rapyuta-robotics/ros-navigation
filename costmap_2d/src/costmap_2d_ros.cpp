@@ -391,11 +391,13 @@ void Costmap2DROS::readFootprintFromConfig(const costmap_2d::Costmap2DConfig &ne
     {
         ROS_ERROR("Invalid footprint string from dynamic reconfigure");
     }
+    use_radius_ = false;
   }
   else
   {
     // robot_radius may be 0, but that must be intended at this point.
     setUnpaddedRobotFootprint(makeFootprintFromRadius(new_config.robot_radius));
+    use_radius_ = true;
   }
 }
 

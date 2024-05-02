@@ -242,11 +242,12 @@ std::pair<std::vector<geometry_msgs::Point>, bool> makeFootprintFromParams(ros::
     nh.param(full_radius_param_name, robot_radius, 1.234);
     points = makeFootprintFromRadius(robot_radius);
     nh.setParam("robot_radius", robot_radius);
+    return { points, true };
   }
   // Else neither param was found anywhere this knows about, so
   // defaults will come from dynamic_reconfigure stuff, set in
   // cfg/Costmap2D.cfg and read in this file in reconfigureCB().
-  return { points, true };
+  return { points, false };
 }
 
 void writeFootprintToParam(ros::NodeHandle& nh, const std::vector<geometry_msgs::Point>& footprint)
