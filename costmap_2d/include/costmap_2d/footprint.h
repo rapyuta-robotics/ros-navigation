@@ -121,7 +121,7 @@ bool makeFootprintFromString(const std::string& footprint_string, std::vector<ge
  * @brief Read the ros-params "footprint" and/or "robot_radius" from
  * the given NodeHandle using searchParam() to go up the tree.
  * @return The footprint as a list of points and whether we used the robot_radius.
- * I that's the case, the footprint will be a circle of "robot_radius".
+ * If that's the case, the footprint will be a circle of "robot_radius".
  */
 std::pair<std::vector<geometry_msgs::Point>, bool> makeFootprintFromParams(ros::NodeHandle& nh);
 
