@@ -158,8 +158,7 @@ Costmap2DROS::Costmap2DROS(const std::string& name, tf2_ros::Buffer& tf) :
   private_nh.param(topic_param, topic, std::string("footprint"));  // TODO: revert to oriented_footprint in N-turtle
   footprint_pub_ = private_nh.advertise<geometry_msgs::PolygonStamped>(topic, 1);
 
-  auto [unpadded_footprint_, use_radius_] = makeFootprintFromParams(private_nh);
-  setUnpaddedRobotFootprint(unpadded_footprint_);
+  setUnpaddedRobotFootprint(makeFootprintFromParams(private_nh, &use_radius_));
 
   publisher_ = new Costmap2DPublisher(&private_nh, layered_costmap_->getCostmap(), global_frame_, "costmap",
                                       always_send_full_costmap);
