@@ -76,6 +76,7 @@ Costmap2DROS::Costmap2DROS(const std::string& name, tf2_ros::Buffer& tf) :
     plugin_loader_("costmap_2d", "costmap_2d::Layer"),
     publisher_(NULL),
     dsrv_(NULL),
+    use_radius_(false),
     footprint_padding_(0.0)
 {
   // Initialize old pose with something
@@ -157,7 +158,7 @@ Costmap2DROS::Costmap2DROS(const std::string& name, tf2_ros::Buffer& tf) :
   private_nh.param(topic_param, topic, std::string("footprint"));  // TODO: revert to oriented_footprint in N-turtle
   footprint_pub_ = private_nh.advertise<geometry_msgs::PolygonStamped>(topic, 1);
 
-  setUnpaddedRobotFootprint(makeFootprintFromParams(private_nh));
+  setUnpaddedRobotFootprint(makeFootprintFromParams(private_nh, &use_radius_));
 
   publisher_ = new Costmap2DPublisher(&private_nh, layered_costmap_->getCostmap(), global_frame_, "costmap",
                                       always_send_full_costmap);
@@ -389,11 +390,13 @@ void Costmap2DROS::readFootprintFromConfig(const costmap_2d::Costmap2DConfig &ne
     {
         ROS_ERROR("Invalid footprint string from dynamic reconfigure");
     }
+    use_radius_ = false;
   }
   else
   {
     // robot_radius may be 0, but that must be intended at this point.
     setUnpaddedRobotFootprint(makeFootprintFromRadius(new_config.robot_radius));
+    use_radius_ = true;
   }
 }
 

@@ -194,6 +194,11 @@ unsigned char Costmap2D::getCost(unsigned int mx, unsigned int my) const
   return costmap_[getIndex(mx, my)];
 }
 
+unsigned char Costmap2D::getCost(unsigned int index) const
+{
+  return costmap_[index];
+}
+
 void Costmap2D::setCost(unsigned int mx, unsigned int my, unsigned char cost)
 {
   costmap_[getIndex(mx, my)] = cost;
@@ -217,6 +222,19 @@ bool Costmap2D::worldToMap(double wx, double wy, unsigned int& mx, unsigned int&
     return true;
 
   return false;
+}
+
+bool Costmap2D::worldToMapContinuous(double wx, double wy, float& mx, float& my) const
+{
+  if (wx < origin_x_ || wy < origin_y_)
+  {
+    return false;
+  }
+
+  mx = static_cast<float>((wx - origin_x_) / resolution_) + 0.5f;
+  my = static_cast<float>((wy - origin_y_) / resolution_) + 0.5f;
+
+  return mx < size_x_ && my < size_y_;
 }
 
 void Costmap2D::worldToMapNoBounds(double wx, double wy, int& mx, int& my) const

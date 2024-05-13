@@ -126,6 +126,16 @@ public:
    */
   void setInflationParameters(double inflation_radius, double cost_scaling_factor);
 
+  double getCostScalingFactor()
+  {
+    return weight_;
+  }
+
+  double getInflationRadius()
+  {
+    return inflation_radius_;
+  }
+
 protected:
   virtual void onFootprintChanged();
   boost::recursive_mutex* inflation_access_;

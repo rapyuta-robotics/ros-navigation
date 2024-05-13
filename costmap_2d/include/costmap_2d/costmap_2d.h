@@ -116,6 +116,13 @@ public:
   unsigned char getCost(unsigned int mx, unsigned int my) const;
 
   /**
+   * @brief  Get the cost of a cell in the costmap
+   * @param index The index of the cell
+   * @return The cost of the cell
+   */
+  unsigned char getCost(unsigned int index) const;
+
+  /**
    * @brief  Set the cost of a cell in the costmap
    * @param mx The x coordinate of the cell
    * @param my The y coordinate of the cell
@@ -141,6 +148,16 @@ public:
    * @return True if the conversion was successful (legal bounds) false otherwise
    */
   bool worldToMap(double wx, double wy, unsigned int& mx, unsigned int& my) const;
+
+  /**
+   * @brief  Convert from world coordinates to map coordinates
+   * @param  wx The x world coordinate
+   * @param  wy The y world coordinate
+   * @param  mx Will be set to the associated map x coordinate
+   * @param  my Will be set to the associated map y coordinate
+   * @return True if the conversion was successful (legal bounds) false otherwise
+   */
+  bool worldToMapContinuous(double wx, double wy, float& mx, float& my) const;
 
   /**
    * @brief  Convert from world coordinates to map coordinates without checking for legal bounds

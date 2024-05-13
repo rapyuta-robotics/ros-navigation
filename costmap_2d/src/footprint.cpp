@@ -209,7 +209,7 @@ bool makeFootprintFromString(const std::string& footprint_string, std::vector<ge
 
 
 
-std::vector<geometry_msgs::Point> makeFootprintFromParams(ros::NodeHandle& nh)
+std::vector<geometry_msgs::Point> makeFootprintFromParams(ros::NodeHandle& nh, bool* use_radius)
 {
   std::string full_param_name;
   std::string full_radius_param_name;
@@ -225,6 +225,10 @@ std::vector<geometry_msgs::Point> makeFootprintFromParams(ros::NodeHandle& nh)
       if (makeFootprintFromString(std::string(footprint_xmlrpc), points))
       {
         writeFootprintToParam(nh, points);
+        if (use_radius)
+        {
+          *use_radius = false;
+        }
         return points;
       }
     }
@@ -232,6 +236,10 @@ std::vector<geometry_msgs::Point> makeFootprintFromParams(ros::NodeHandle& nh)
     {
       points = makeFootprintFromXMLRPC(footprint_xmlrpc, full_param_name);
       writeFootprintToParam(nh, points);
+      if (use_radius)
+      {
+        *use_radius = false;
+      }
       return points;
     }
   }
@@ -242,6 +250,10 @@ std::vector<geometry_msgs::Point> makeFootprintFromParams(ros::NodeHandle& nh)
     nh.param(full_radius_param_name, robot_radius, 1.234);
     points = makeFootprintFromRadius(robot_radius);
     nh.setParam("robot_radius", robot_radius);
+    if (use_radius)
+    {
+      *use_radius = true;
+    }
   }
   // Else neither param was found anywhere this knows about, so
   // defaults will come from dynamic_reconfigure stuff, set in
