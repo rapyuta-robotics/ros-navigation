@@ -46,6 +46,7 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include <map_msgs/OccupancyGridUpdate.h>
 #include <message_filters/subscriber.h>
+#include <costmap_2d/StaticPluginConfig.h>
 
 namespace costmap_2d
 {
@@ -75,7 +76,7 @@ private:
    */
   void incomingMap(const nav_msgs::OccupancyGridConstPtr& new_map);
   void incomingUpdate(const map_msgs::OccupancyGridUpdateConstPtr& update);
-  void reconfigureCB(costmap_2d::GenericPluginConfig &config, uint32_t level);
+  void reconfigureCB(costmap_2d::StaticPluginConfig &config, uint32_t level);
 
   unsigned char interpretValue(unsigned char value);
 
@@ -86,14 +87,14 @@ private:
   bool has_updated_data_;
   unsigned int x_, y_, width_, height_;
   bool track_unknown_space_;
-  bool use_maximum_;
   bool first_map_only_;      ///< @brief Store the first static map and reuse it on reinitializing
   bool trinary_costmap_;
   ros::Subscriber map_sub_, map_update_sub_;
 
   unsigned char lethal_threshold_, unknown_cost_value_;
+  int combination_method_;
 
-  dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig> *dsrv_;
+  dynamic_reconfigure::Server<costmap_2d::StaticPluginConfig> *dsrv_;
 };
 
 }  // namespace costmap_2d

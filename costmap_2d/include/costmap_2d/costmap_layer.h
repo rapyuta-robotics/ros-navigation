@@ -115,6 +115,29 @@ protected:
    */
   void updateWithAddition(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j);
 
+  /*
+   * Updates the master_grid within the specified
+   * bounding box using this layer's values.
+   *
+   * Sets the new value to FREE if the layer's value is occupied.
+   * If the master value is NO_INFORMATION, keep it.
+   * If the layer's value is NO_INFORMATION,
+   * then the master value does not change.
+   *
+   */
+  void updateWithSubtraction(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j);
+
+  /*
+   * Updates the master_grid with layer index
+   *
+   * Sets the new value to FREE if the layer's value is occupied.
+   * If the master value is NO_INFORMATION, keep it.
+   * If the layer's value is NO_INFORMATION,
+   * then the master value does not change.
+   *
+   */
+  void subtraction(costmap_2d::Costmap2D& master_grid, unsigned int master_grid_index, unsigned int costmap_index);
+
   /**
    * Updates the bounding box specified in the parameters to include
    * the location (x,y)
