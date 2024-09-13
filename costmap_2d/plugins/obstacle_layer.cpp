@@ -331,12 +331,6 @@ void ObstacleLayer::pointCloud2Callback(const sensor_msgs::PointCloud2ConstPtr& 
   buffer->unlock();
 }
 
-void ObstacleLayer::updateOrigin(double new_origin_x, double new_origin_y)
-{
-  Costmap2D::updateOrigin(new_origin_x, new_origin_y);
-  updateMapPolygon();
-}
-
 void ObstacleLayer::updateMapPolygon()
 {
   map_boundary_.clear();

@@ -169,17 +169,11 @@ protected:
   void updateRaytraceBounds(double ox, double oy, double wx, double wy, double range, double* min_x, double* min_y,
                             double* max_x, double* max_y);
 
-  /**
-   * @brief  Move the origin of the costmap to a new location.... keeping data when it can
-   * @param  new_origin_x The x coordinate of the new origin
-   * @param  new_origin_y The y coordinate of the new origin
-   */
-  virtual void updateOrigin(double new_origin_x, double new_origin_y);
   void updateMapPolygon();
 
   std::vector<geometry_msgs::Point> transformed_footprint_;
   bool footprint_clearing_enabled_;
-  void updateFootprint(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y, 
+  void updateFootprint(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
                        double* max_x, double* max_y);
 
   std::string global_frame_;  ///< @brief The global frame for the costmap
