@@ -175,6 +175,7 @@ protected:
    * @param  new_origin_y The y coordinate of the new origin
    */
   virtual void updateOrigin(double new_origin_x, double new_origin_y);
+  void updateMapPolygon();
 
   std::vector<geometry_msgs::Point> transformed_footprint_;
   bool footprint_clearing_enabled_;

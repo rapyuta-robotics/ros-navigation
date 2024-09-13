@@ -334,7 +334,11 @@ void ObstacleLayer::pointCloud2Callback(const sensor_msgs::PointCloud2ConstPtr& 
 void ObstacleLayer::updateOrigin(double new_origin_x, double new_origin_y)
 {
   Costmap2D::updateOrigin(new_origin_x, new_origin_y);
+  updateMapPolygon();
+}
 
+void ObstacleLayer::updateMapPolygon()
+{
   map_boundary_.clear();
   const double origin_x = origin_x_, origin_y = origin_y_;
   const double map_end_x = origin_x + size_x_ * resolution_;
@@ -346,12 +350,14 @@ void ObstacleLayer::updateOrigin(double new_origin_x, double new_origin_y)
   bg::append(map_boundary_.outer(), Point(origin_x, origin_y));
 }
 
+
 void ObstacleLayer::updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x,
                                           double* min_y, double* max_x, double* max_y)
 {
   if (rolling_window_)
     updateOrigin(robot_x - getSizeInMetersX() / 2, robot_y - getSizeInMetersY() / 2);
   useExtraBounds(min_x, min_y, max_x, max_y);
+  updateMapPolygon();
 
   bool current = true;
   std::vector<Observation> observations, clearing_observations;
@@ -522,7 +528,6 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
     return;
   }
 
-
   // we can pre-compute the enpoints of the map outside of the inner loop... we'll need these later
   double origin_x = origin_x_, origin_y = origin_y_;
   double map_end_x = origin_x + size_x_ * resolution_;
@@ -540,15 +545,15 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
     double wx = *iter_x;
     double wy = *iter_y;
 
-    // now we also need to make sure that the enpoint we're raytracing
-    // to isn't off the costmap and scale if necessary
-    double a = wx - ox;
-    double b = wy - oy;
-
     if (!origin_valid && !adjustSensorOrigin(ox, oy, wx, wy))
     {
       continue;
     }
+
+    // now we also need to make sure that the enpoint we're raytracing
+    // to isn't off the costmap and scale if necessary
+    double a = wx - ox;
+    double b = wy - oy;
 
     // the minimum value to raytrace from is the origin
     if (wx < origin_x)
