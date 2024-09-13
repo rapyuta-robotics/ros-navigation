@@ -240,6 +240,7 @@ void ObstacleLayer::reconfigureCB(costmap_2d::ObstaclePluginConfig &config, uint
   footprint_clearing_enabled_ = config.footprint_clearing_enabled;
   max_obstacle_height_ = config.max_obstacle_height;
   combination_method_ = config.combination_method;
+  raytrace_outside_map_ = config.raytrace_outside_map;
 }
 
 void ObstacleLayer::laserScanCallback(const sensor_msgs::LaserScanConstPtr& message,
@@ -328,6 +329,21 @@ void ObstacleLayer::pointCloud2Callback(const sensor_msgs::PointCloud2ConstPtr& 
   buffer->lock();
   buffer->bufferCloud(*message);
   buffer->unlock();
+}
+
+void ObstacleLayer::updateOrigin(double new_origin_x, double new_origin_y)
+{
+  Costmap2D::updateOrigin(new_origin_x, new_origin_y);
+
+  map_boundary_.clear();
+  const double origin_x = origin_x_, origin_y = origin_y_;
+  const double map_end_x = origin_x + size_x_ * resolution_;
+  const double map_end_y = origin_y + size_y_ * resolution_;
+  bg::append(map_boundary_.outer(), Point(origin_x, origin_y));
+  bg::append(map_boundary_.outer(), Point(map_end_x, origin_y));
+  bg::append(map_boundary_.outer(), Point(map_end_x, map_end_y));
+  bg::append(map_boundary_.outer(), Point(origin_x, map_end_y));
+  bg::append(map_boundary_.outer(), Point(origin_x, origin_y));
 }
 
 void ObstacleLayer::updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x,
@@ -495,14 +511,17 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
   const sensor_msgs::PointCloud2 &cloud = *(clearing_observation.cloud_);
 
   // get the map coordinates of the origin of the sensor
+
   unsigned int x0, y0;
-  if (!worldToMap(ox, oy, x0, y0))
+  const bool origin_valid = worldToMap(ox, oy, x0, y0);
+  if (!raytrace_outside_map_ && !origin_valid)
   {
     ROS_WARN_THROTTLE(
         1.0, "The origin for the sensor at (%.2f, %.2f) is out of map bounds. So, the costmap cannot raytrace for it.",
         ox, oy);
     return;
   }
+
 
   // we can pre-compute the enpoints of the map outside of the inner loop... we'll need these later
   double origin_x = origin_x_, origin_y = origin_y_;
@@ -526,6 +545,11 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
     double a = wx - ox;
     double b = wy - oy;
 
+    if (!origin_valid && !adjustSensorOrigin(ox, oy, wx, wy))
+    {
+      continue;
+    }
+
     // the minimum value to raytrace from is the origin
     if (wx < origin_x)
     {
@@ -539,7 +563,6 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
       wx = ox + a * t;
       wy = origin_y;
     }
-
     // the maximum value to raytrace to is the end of the map
     if (wx > map_end_x)
     {
@@ -558,7 +581,7 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
     unsigned int x1, y1;
 
     // check for legality just in case
-    if (!worldToMap(wx, wy, x1, y1))
+    if (!worldToMap(wx, wy, x1, y1) || !worldToMap(ox, oy, x0, y0))
       continue;
 
     unsigned int cell_raytrace_range = cellDistance(clearing_observation.raytrace_range_);
@@ -569,6 +592,41 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
     updateRaytraceBounds(ox, oy, wx, wy, clearing_observation.raytrace_range_, min_x, min_y, max_x, max_y);
   }
 }
+
+bool ObstacleLayer::adjustSensorOrigin(double &ox, double &oy, double wx, double wy) const
+{
+  // Define the sensor ray as a linestring (from the sensor origin to the endpoint)
+  Linestring sensor_ray;
+  bg::append(sensor_ray, Point(ox, oy));
+  bg::append(sensor_ray, Point(wx, wy));
+
+  std::vector<Point> intersection_points;
+  bg::intersection(sensor_ray, map_boundary_, intersection_points);
+
+  if (intersection_points.size() != 2)
+  {
+    return false;
+  }
+
+  const auto& intersection1 = intersection_points[0];
+  const auto& intersection2 = intersection_points[1];
+  double distance1 = bg::distance(Point(ox, oy), intersection1);
+  double distance2 = bg::distance(Point(ox, oy), intersection2);
+
+  // Choose the closest intersection point as origin
+  if (distance1 < distance2)
+  {
+    ox = intersection1.x();
+    oy = intersection1.y();
+  }
+  else
+  {
+    ox = intersection2.x();
+    oy = intersection2.y();
+  }
+  return true;
+}
+
 
 void ObstacleLayer::activate()
 {
