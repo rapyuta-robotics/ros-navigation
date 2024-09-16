@@ -514,7 +514,7 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
 
   unsigned int x0, y0;
   const bool origin_valid = worldToMap(ox, oy, x0, y0);
-  if (!raytrace_outside_map_ && !origin_valid)
+  if (!origin_valid && !raytrace_outside_map_)
   {
     ROS_WARN_THROTTLE(
         1.0, "The origin for the sensor at (%.2f, %.2f) is out of map bounds. So, the costmap cannot raytrace for it.",
@@ -527,7 +527,6 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
   double map_end_x = origin_x + size_x_ * resolution_;
   double map_end_y = origin_y + size_y_ * resolution_;
 
-
   touch(ox, oy, min_x, min_y, max_x, max_y);
 
   // for each point in the cloud, we want to trace a line from the origin and clear obstacles along it
@@ -539,6 +538,7 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
     double wx = *iter_x;
     double wy = *iter_y;
 
+    // adjust the origin of the sensor to be inside the map if it is outside and raytrace_outside_map is true
     if (!origin_valid && !adjustSensorOrigin(ox, oy, wx, wy))
     {
       continue;
@@ -592,7 +592,7 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
   }
 }
 
-bool ObstacleLayer::adjustSensorOrigin(double &ox, double &oy, double wx, double wy) const
+bool ObstacleLayer::adjustSensorOrigin(double& ox, double& oy, double wx, double wy) const
 {
   // Define the sensor ray as a linestring (from the sensor origin to the endpoint)
   Linestring sensor_ray;
@@ -600,8 +600,12 @@ bool ObstacleLayer::adjustSensorOrigin(double &ox, double &oy, double wx, double
   bg::append(sensor_ray, Point(wx, wy));
 
   std::vector<Point> intersection_points;
+
+  // find the intersection between the map and the line defined by the sensor ray
   bg::intersection(sensor_ray, map_boundary_, intersection_points);
 
+  // the map is a rectangle, so there should be two intersection points
+  // otherwise, sensor's ray is completely outside the map
   if (intersection_points.size() != 2)
   {
     return false;
@@ -625,7 +629,6 @@ bool ObstacleLayer::adjustSensorOrigin(double &ox, double &oy, double wx, double
   }
   return true;
 }
-
 
 void ObstacleLayer::activate()
 {

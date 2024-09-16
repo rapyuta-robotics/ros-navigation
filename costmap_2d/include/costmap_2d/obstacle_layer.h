@@ -154,7 +154,7 @@ protected:
                                  double* max_x, double* max_y);
 
   /**
-   * @brief Adjust the origin of the sensor to be inside the map
+   * @brief Adjust the origin of the sensor to be inside the map if raytrace_outside_map is true.
    * When the sensor origin is outside the map, we calculate where the line
    * between the origin and the point intersects the map boundaries.
    * This becomes the new start point for the raytrace
