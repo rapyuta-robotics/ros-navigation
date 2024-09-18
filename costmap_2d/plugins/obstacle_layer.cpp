@@ -539,7 +539,7 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
     double wy = *iter_y;
 
     // adjust the origin of the sensor to be inside the map if it is outside and raytrace_outside_map is true
-    if (!origin_valid && !adjustSensorOrigin(ox, oy, wx, wy))
+    if (!origin_valid && !adjustSensorOrigin(clearing_observation, ox, oy, wx, wy))
     {
       continue;
     }
@@ -592,7 +592,8 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
   }
 }
 
-bool ObstacleLayer::adjustSensorOrigin(double& ox, double& oy, double wx, double wy) const
+bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, double& ox, double& oy, double wx,
+                                       double wy) const
 {
   // Define the sensor ray as a linestring (from the sensor origin to the endpoint)
   Linestring sensor_ray;
@@ -616,6 +617,10 @@ bool ObstacleLayer::adjustSensorOrigin(double& ox, double& oy, double wx, double
   double distance1 = bg::distance(Point(ox, oy), intersection1);
   double distance2 = bg::distance(Point(ox, oy), intersection2);
 
+  // copy original sensor origin
+  const double original_ox = ox;
+  const double original_oy = oy;
+
   // Choose the closest intersection point as origin
   if (distance1 < distance2)
   {
@@ -627,6 +632,21 @@ bool ObstacleLayer::adjustSensorOrigin(double& ox, double& oy, double wx, double
     ox = intersection2.x();
     oy = intersection2.y();
   }
+
+  // check if the distance between new origin and original sensor's origin is within range
+  if (std::hypot(original_ox - ox, original_oy - oy) > clearing_observation.raytrace_range_)
+  {
+    return false;
+  }
+
+  // check if the distance between the original sensor origin and the new one
+  // is greater than original sensor's origin and the endpoint
+  // the obstacle is closer than the map boundary, so we don't need to raytrace
+  if (std::hypot(original_ox - wx, original_oy - wy) < std::hypot(original_ox - ox, original_oy - oy))
+  {
+    return false;
+  }
+
   return true;
 }
 
@@ -654,10 +674,10 @@ void ObstacleLayer::deactivate()
   }
 }
 
-void ObstacleLayer::updateRaytraceBounds(double ox, double oy, double wx, double wy, double range,
-                                         double* min_x, double* min_y, double* max_x, double* max_y)
+void ObstacleLayer::updateRaytraceBounds(double ox, double oy, double wx, double wy, double range, double* min_x,
+                                         double* min_y, double* max_x, double* max_y)
 {
-  double dx = wx-ox, dy = wy-oy;
+  double dx = wx - ox, dy = wy - oy;
   double full_distance = hypot(dx, dy);
   double scale = std::min(1.0, range / full_distance);
   double ex = ox + dx * scale, ey = oy + dy * scale;
@@ -666,10 +686,10 @@ void ObstacleLayer::updateRaytraceBounds(double ox, double oy, double wx, double
 
 void ObstacleLayer::reset()
 {
-    deactivate();
-    resetMaps();
-    current_ = true;
-    activate();
+  deactivate();
+  resetMaps();
+  current_ = true;
+  activate();
 }
 
 }  // namespace costmap_2d
