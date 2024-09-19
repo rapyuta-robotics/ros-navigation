@@ -544,39 +544,37 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
     {
       continue;
     }
-    else
+    
+    // now we also need to make sure that the enpoint we're raytracing
+    // to isn't off the costmap and scale if necessary
+    double a = wx - ox;
+    double b = wy - oy;
+
+    // the minimum value to raytrace from is the origin
+    if (wx < origin_x)
     {
-      // now we also need to make sure that the enpoint we're raytracing
-      // to isn't off the costmap and scale if necessary
-      double a = wx - ox;
-      double b = wy - oy;
-  
-      // the minimum value to raytrace from is the origin
-      if (wx < origin_x)
-      {
-        double t = (origin_x - ox) / a;
-        wx = origin_x;
-        wy = oy + b * t;
-      }
-      if (wy < origin_y)
-      {
-        double t = (origin_y - oy) / b;
-        wx = ox + a * t;
-        wy = origin_y;
-      }
-      // the maximum value to raytrace to is the end of the map
-      if (wx > map_end_x)
-      {
-        double t = (map_end_x - ox) / a;
-        wx = map_end_x - .001;
-        wy = oy + b * t;
-      }
-      if (wy > map_end_y)
-      {
-        double t = (map_end_y - oy) / b;
-        wx = ox + a * t;
-        wy = map_end_y - .001;
-      }
+      double t = (origin_x - ox) / a;
+      wx = origin_x;
+      wy = oy + b * t;
+    }
+    if (wy < origin_y)
+    {
+      double t = (origin_y - oy) / b;
+      wx = ox + a * t;
+      wy = origin_y;
+    }
+    // the maximum value to raytrace to is the end of the map
+    if (wx > map_end_x)
+    {
+      double t = (map_end_x - ox) / a;
+      wx = map_end_x - .001;
+      wy = oy + b * t;
+    }
+    if (wy > map_end_y)
+    {
+      double t = (map_end_y - oy) / b;
+      wx = ox + a * t;
+      wy = map_end_y - .001;
     }
 
     // now that the vector is scaled correctly... we'll get the map coordinates of its endpoint
@@ -595,8 +593,8 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
   }
 }
 
-bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, double& ox, double& oy, double& wx,
-                                       double& wy) const
+bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, double& ox, double& oy, double wx,
+                                       double wy) const
 {
   // Define the sensor ray as a linestring (from the sensor origin to the endpoint)
   Linestring sensor_ray;
@@ -623,22 +621,17 @@ bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, 
   // copy original sensor origin
   const double original_ox = ox;
   const double original_oy = oy;
-  double end_x, end_y;
 
   // Choose the closest intersection point as origin
   if (distance1 < distance2)
   {
     ox = intersection1.x();
     oy = intersection1.y();
-    end_x = intersection2.x();
-    end_y = intersection2.y();
   }
   else
   {
     ox = intersection2.x();
     oy = intersection2.y();
-    end_x = intersection1.x();
-    end_y = intersection1.y();
   }
 
   // check if the distance between new origin and original sensor's origin is within range
@@ -654,16 +647,6 @@ bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, 
   {
     return false;
   }
-
-  // scale the endpoint to the second intersection point 
-  // if the distance between the new origin and endpoint is greater than second intersection point and the new origin
-  // this means the endpoint is outside the map, so we put it on the second intersection point (inside the map)
-  if (std::hypot(end_x - ox, end_y - oy) < std::hypot(wx - ox, wy - oy))
-  {
-    wx = end_x;
-    wy = end_y;
-  }
-
   return true;
 }
 
