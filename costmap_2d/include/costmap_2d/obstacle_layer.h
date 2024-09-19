@@ -56,11 +56,23 @@
 #include <costmap_2d/ObstaclePluginConfig.h>
 #include <costmap_2d/footprint.h>
 
+// boost
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/point_xy.hpp>
+#include <boost/geometry/geometries/linestring.hpp>
+#include <boost/geometry/geometries/polygon.hpp>
+
 namespace costmap_2d
 {
 
+namespace bg = boost::geometry;
+
 class ObstacleLayer : public CostmapLayer
 {
+private:
+  typedef bg::model::d2::point_xy<double> Point;
+  typedef bg::model::polygon<Point, false, false> Polygon;
+  typedef bg::model::linestring<Point> Linestring;
 public:
   ObstacleLayer()
   {
@@ -141,12 +153,28 @@ protected:
   virtual void raytraceFreespace(const costmap_2d::Observation& clearing_observation, double* min_x, double* min_y,
                                  double* max_x, double* max_y);
 
+  /**
+   * @brief Adjust the origin of the sensor to be inside the map if raytrace_outside_map is true.
+   * When the sensor origin is outside the map, we calculate where the line
+   * between the origin and the point intersects the map boundaries.
+   * This becomes the new start point for the raytrace.
+   * It returns true if the new origin is updated, within range, and closer than the endpoint
+   * @param ox The x coordinate of the origin
+   * @param oy The y coordinate of the origin
+   * @param wx The x coordinate of the point
+   * @param wy The y coordinate of the point
+   * @return bool True if the origin is updated
+   */
+  bool adjustSensorOrigin(const Observation& clearing_observation, double& ox, double& oy, double wx, double wy) const;
+
   void updateRaytraceBounds(double ox, double oy, double wx, double wy, double range, double* min_x, double* min_y,
                             double* max_x, double* max_y);
 
+  void updateMapPolygon();
+
   std::vector<geometry_msgs::Point> transformed_footprint_;
   bool footprint_clearing_enabled_;
-  void updateFootprint(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y, 
+  void updateFootprint(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
                        double* max_x, double* max_y);
 
   std::string global_frame_;  ///< @brief The global frame for the costmap
@@ -167,6 +195,8 @@ protected:
   dynamic_reconfigure::Server<costmap_2d::ObstaclePluginConfig> *dsrv_;
 
   int combination_method_;
+  bool raytrace_outside_map_;
+  Polygon map_boundary_;
 
 private:
   void reconfigureCB(costmap_2d::ObstaclePluginConfig &config, uint32_t level);

@@ -240,6 +240,7 @@ void ObstacleLayer::reconfigureCB(costmap_2d::ObstaclePluginConfig &config, uint
   footprint_clearing_enabled_ = config.footprint_clearing_enabled;
   max_obstacle_height_ = config.max_obstacle_height;
   combination_method_ = config.combination_method;
+  raytrace_outside_map_ = config.raytrace_outside_map;
 }
 
 void ObstacleLayer::laserScanCallback(const sensor_msgs::LaserScanConstPtr& message,
@@ -330,12 +331,27 @@ void ObstacleLayer::pointCloud2Callback(const sensor_msgs::PointCloud2ConstPtr& 
   buffer->unlock();
 }
 
+void ObstacleLayer::updateMapPolygon()
+{
+  map_boundary_.clear();
+  const double origin_x = origin_x_, origin_y = origin_y_;
+  const double map_end_x = origin_x + size_x_ * resolution_;
+  const double map_end_y = origin_y + size_y_ * resolution_;
+  bg::append(map_boundary_.outer(), Point(origin_x, origin_y));
+  bg::append(map_boundary_.outer(), Point(map_end_x, origin_y));
+  bg::append(map_boundary_.outer(), Point(map_end_x, map_end_y));
+  bg::append(map_boundary_.outer(), Point(origin_x, map_end_y));
+  bg::append(map_boundary_.outer(), Point(origin_x, origin_y));
+}
+
+
 void ObstacleLayer::updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x,
                                           double* min_y, double* max_x, double* max_y)
 {
   if (rolling_window_)
     updateOrigin(robot_x - getSizeInMetersX() / 2, robot_y - getSizeInMetersY() / 2);
   useExtraBounds(min_x, min_y, max_x, max_y);
+  updateMapPolygon();
 
   bool current = true;
   std::vector<Observation> observations, clearing_observations;
@@ -490,17 +506,17 @@ bool ObstacleLayer::getClearingObservations(std::vector<Observation>& clearing_o
 void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, double* min_x, double* min_y,
                                               double* max_x, double* max_y)
 {
-  double ox = clearing_observation.origin_.x;
-  double oy = clearing_observation.origin_.y;
   const sensor_msgs::PointCloud2 &cloud = *(clearing_observation.cloud_);
 
   // get the map coordinates of the origin of the sensor
+
   unsigned int x0, y0;
-  if (!worldToMap(ox, oy, x0, y0))
+  const bool origin_valid = worldToMap(clearing_observation.origin_.x, clearing_observation.origin_.y, x0, y0);
+  if (!origin_valid && !raytrace_outside_map_)
   {
     ROS_WARN_THROTTLE(
         1.0, "The origin for the sensor at (%.2f, %.2f) is out of map bounds. So, the costmap cannot raytrace for it.",
-        ox, oy);
+        clearing_observation.origin_.x, clearing_observation.origin_.y);
     return;
   }
 
@@ -509,8 +525,7 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
   double map_end_x = origin_x + size_x_ * resolution_;
   double map_end_y = origin_y + size_y_ * resolution_;
 
-
-  touch(ox, oy, min_x, min_y, max_x, max_y);
+  touch(clearing_observation.origin_.x, clearing_observation.origin_.y, min_x, min_y, max_x, max_y);
 
   // for each point in the cloud, we want to trace a line from the origin and clear obstacles along it
   sensor_msgs::PointCloud2ConstIterator<float> iter_x(cloud, "x");
@@ -518,9 +533,18 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
 
   for (; iter_x != iter_x.end(); ++iter_x, ++iter_y)
   {
+    double ox = clearing_observation.origin_.x;
+    double oy = clearing_observation.origin_.y;
+
     double wx = *iter_x;
     double wy = *iter_y;
 
+    // adjust the origin of the sensor to be inside the map if it is outside and raytrace_outside_map is true
+    if (!origin_valid && !adjustSensorOrigin(clearing_observation, ox, oy, wx, wy))
+    {
+      continue;
+    }
+    
     // now we also need to make sure that the enpoint we're raytracing
     // to isn't off the costmap and scale if necessary
     double a = wx - ox;
@@ -539,7 +563,6 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
       wx = ox + a * t;
       wy = origin_y;
     }
-
     // the maximum value to raytrace to is the end of the map
     if (wx > map_end_x)
     {
@@ -558,7 +581,7 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
     unsigned int x1, y1;
 
     // check for legality just in case
-    if (!worldToMap(wx, wy, x1, y1))
+    if (!worldToMap(wx, wy, x1, y1) || !worldToMap(ox, oy, x0, y0))
       continue;
 
     unsigned int cell_raytrace_range = cellDistance(clearing_observation.raytrace_range_);
@@ -568,6 +591,63 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
 
     updateRaytraceBounds(ox, oy, wx, wy, clearing_observation.raytrace_range_, min_x, min_y, max_x, max_y);
   }
+}
+
+bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, double& ox, double& oy, double wx,
+                                       double wy) const
+{
+  // Define the sensor ray as a linestring (from the sensor origin to the endpoint)
+  Linestring sensor_ray;
+  bg::append(sensor_ray, Point(ox, oy));
+  bg::append(sensor_ray, Point(wx, wy));
+
+  std::vector<Point> intersection_points;
+
+  // find the intersection between the map and the line defined by the sensor ray
+  bg::intersection(sensor_ray, map_boundary_, intersection_points);
+
+  // the map is a rectangle, so there should be two intersection points
+  // otherwise, sensor's ray is completely outside the map
+  if (intersection_points.size() != 2)
+  {
+    return false;
+  }
+
+  const auto& intersection1 = intersection_points[0];
+  const auto& intersection2 = intersection_points[1];
+  double distance1 = bg::distance(Point(ox, oy), intersection1);
+  double distance2 = bg::distance(Point(ox, oy), intersection2);
+
+  // copy original sensor origin
+  const double original_ox = ox;
+  const double original_oy = oy;
+
+  // Choose the closest intersection point as origin
+  if (distance1 < distance2)
+  {
+    ox = intersection1.x();
+    oy = intersection1.y();
+  }
+  else
+  {
+    ox = intersection2.x();
+    oy = intersection2.y();
+  }
+
+  // check if the distance between new origin and original sensor's origin is within range
+  if (std::hypot(original_ox - ox, original_oy - oy) > clearing_observation.raytrace_range_)
+  {
+    return false;
+  }
+
+  // check if the distance between the original sensor origin and the new one
+  // is greater than original sensor's origin and the endpoint
+  // the obstacle is closer than the map boundary, so we don't need to raytrace
+  if (std::hypot(original_ox - wx, original_oy - wy) < std::hypot(original_ox - ox, original_oy - oy))
+  {
+    return false;
+  }
+  return true;
 }
 
 void ObstacleLayer::activate()
@@ -594,10 +674,10 @@ void ObstacleLayer::deactivate()
   }
 }
 
-void ObstacleLayer::updateRaytraceBounds(double ox, double oy, double wx, double wy, double range,
-                                         double* min_x, double* min_y, double* max_x, double* max_y)
+void ObstacleLayer::updateRaytraceBounds(double ox, double oy, double wx, double wy, double range, double* min_x,
+                                         double* min_y, double* max_x, double* max_y)
 {
-  double dx = wx-ox, dy = wy-oy;
+  double dx = wx - ox, dy = wy - oy;
   double full_distance = hypot(dx, dy);
   double scale = std::min(1.0, range / full_distance);
   double ex = ox + dx * scale, ey = oy + dy * scale;
@@ -606,10 +686,10 @@ void ObstacleLayer::updateRaytraceBounds(double ox, double oy, double wx, double
 
 void ObstacleLayer::reset()
 {
-    deactivate();
-    resetMaps();
-    current_ = true;
-    activate();
+  deactivate();
+  resetMaps();
+  current_ = true;
+  activate();
 }
 
 }  // namespace costmap_2d
