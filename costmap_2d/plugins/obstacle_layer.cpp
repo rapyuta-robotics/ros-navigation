@@ -624,7 +624,7 @@ bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, 
     ox = intersection.x();
     oy = intersection.y();
 
-    // the object must be farther than the obstacle
+    // the obstacle must be farther than the intersection
     if (std::hypot(original_ox - wx, original_oy - wy) <= std::hypot(ox - wx, oy - wy))
     {
       return false;
