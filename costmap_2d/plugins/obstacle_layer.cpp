@@ -596,6 +596,10 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
 bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, double& ox, double& oy, double wx,
                                        double wy) const
 {
+  // copy original sensor origin
+  const double original_ox = ox;
+  const double original_oy = oy;
+  
   // Define the sensor ray as a linestring (from the sensor origin to the endpoint)
   Linestring sensor_ray;
   bg::append(sensor_ray, Point(ox, oy));
@@ -606,21 +610,33 @@ bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, 
   // find the intersection between the map and the line defined by the sensor ray
   bg::intersection(sensor_ray, map_boundary_, intersection_points);
 
-  // the map is a rectangle, so there should be two intersection points
-  // otherwise, sensor's ray is completely outside the map
-  if (intersection_points.size() != 2)
+  // the map is a rectangle, so there should be at least one intersection point
+  // and at maximum 2 intersection points
+  if (intersection_points.size() > 2 || intersection_points.size() == 0)
   {
     return false;
   }
 
+  // if there is just one intersection point, an object is inside the map
+  if (intersection_points.size() == 1)
+  {
+    const auto& intersection = intersection_points[0];
+    ox = intersection.x();
+    oy = intersection.y();
+
+    // the obstacle must be farther than the intersection
+    if (std::hypot(original_ox - wx, original_oy - wy) <= std::hypot(ox - wx, oy - wy))
+    {
+      return false;
+    }
+    return true;
+  }
+
+  // if there are two intersection points, the raytrace passes through the map
   const auto& intersection1 = intersection_points[0];
   const auto& intersection2 = intersection_points[1];
   double distance1 = bg::distance(Point(ox, oy), intersection1);
   double distance2 = bg::distance(Point(ox, oy), intersection2);
-
-  // copy original sensor origin
-  const double original_ox = ox;
-  const double original_oy = oy;
 
   // Choose the closest intersection point as origin
   if (distance1 < distance2)
