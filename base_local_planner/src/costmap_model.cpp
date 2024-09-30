@@ -49,7 +49,7 @@ namespace base_local_planner {
     // returns:
     //  -1 if footprint covers at least a lethal obstacle cell, or
     //  -2 if footprint covers at least a no-information cell, or
-    //  -3 if footprint is [partially] outside of the map, or
+    //  -3 if footprint is [partially] outside the map, or
     //  a positive value for traversable space
 
     //used to put things into grid coordinates
@@ -59,13 +59,15 @@ namespace base_local_planner {
     if(!costmap_.worldToMap(position.x, position.y, cell_x, cell_y))
       return -3.0;
 
+    //check its cost, so we can skip footprint check if it's already non-traversable space
+    unsigned char cost = costmap_.getCost(cell_x, cell_y);
+    if(cost == NO_INFORMATION)
+      return -2.0;
+    if(cost == LETHAL_OBSTACLE || cost == INSCRIBED_INFLATED_OBSTACLE)
+      return -1.0;
+
     //if number of points in the footprint is less than 3, we'll just assume a circular robot
     if(footprint.size() < 3){
-      unsigned char cost = costmap_.getCost(cell_x, cell_y);
-      if(cost == NO_INFORMATION)
-        return -2.0;
-      if(cost == LETHAL_OBSTACLE || cost == INSCRIBED_INFLATED_OBSTACLE)
-        return -1.0;
       return cost;
     }
 
