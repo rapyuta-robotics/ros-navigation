@@ -59,7 +59,7 @@ void OdometryHelperRos::odomCallback(const nav_msgs::Odometry::ConstPtr& msg) {
 }
 
 //copy over the odometry information
-void OdometryHelperRos::getOdom(nav_msgs::Odometry& base_odom) {
+void OdometryHelperRos::getOdom(nav_msgs::Odometry& base_odom) const {
   boost::mutex::scoped_lock lock(odom_mutex_);
   base_odom = base_odom_;
 }
