@@ -125,7 +125,7 @@ protected:
    * then the master value does not change.
    *
    */
-  void updateWithSubtraction(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j);
+  void updateWithMask(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j);
 
   /*
    * Updates the master_grid with layer index
@@ -136,7 +136,7 @@ protected:
    * then the master value does not change.
    *
    */
-  void subtraction(costmap_2d::Costmap2D& master_grid, unsigned int master_grid_index, unsigned int costmap_index);
+  void mask(costmap_2d::Costmap2D& master_grid, unsigned int master_grid_index, unsigned int costmap_index);
 
   /**
    * Updates the bounding box specified in the parameters to include

@@ -318,7 +318,7 @@ void StaticLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int
     else if (combination_method_ == costmap_2d::StaticPlugin_Maximum)
       updateWithMax(master_grid, min_i, min_j, max_i, max_j);
     else
-      updateWithSubtraction(master_grid, min_i, min_j, max_i, max_j);
+      updateWithMask(master_grid, min_i, min_j, max_i, max_j);
   }
   else
   {
@@ -353,8 +353,8 @@ void StaticLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int
         {
           if (combination_method_ == costmap_2d::StaticPlugin_Overwrite)
             master_grid.setCost(i, j, getCost(mx, my));
-          else if (combination_method_ == costmap_2d::StaticPlugin_Subtraction)
-            subtraction(master_grid, master_grid.getIndex(i, j), getIndex(mx, my));
+          else if (combination_method_ == costmap_2d::StaticPlugin_Mask)
+            mask(master_grid, master_grid.getIndex(i, j), getIndex(mx, my));
           else
             master_grid.setCost(i, j, std::max(getCost(mx, my), master_grid.getCost(i, j)));
         }

@@ -157,7 +157,7 @@ void CostmapLayer::updateWithAddition(costmap_2d::Costmap2D& master_grid, int mi
   }
 }
 
-void CostmapLayer::updateWithSubtraction(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j)
+void CostmapLayer::updateWithMask(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j)
 {
   if (!enabled_)
     return;
@@ -169,13 +169,13 @@ void CostmapLayer::updateWithSubtraction(costmap_2d::Costmap2D& master_grid, int
     unsigned int it = j * span + min_i;
     for (int i = min_i; i < max_i; i++)
     {
-      subtraction(master_grid, it, it);
+      mask(master_grid, it, it);
       it++;
     }
   }
 }
 
-void CostmapLayer::subtraction(costmap_2d::Costmap2D& master_grid, unsigned int master_grid_index, unsigned int costmap_index)
+void CostmapLayer::mask(costmap_2d::Costmap2D& master_grid, unsigned int master_grid_index, unsigned int costmap_index)
 {
   unsigned char* master_array = master_grid.getCharMap();
   if (costmap_[costmap_index] == costmap_2d::LETHAL_OBSTACLE)
