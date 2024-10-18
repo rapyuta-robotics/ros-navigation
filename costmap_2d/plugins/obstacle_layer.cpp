@@ -549,7 +549,6 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
     // to isn't off the costmap and scale if necessary
     double a = wx - ox;
     double b = wy - oy;
-
     // the minimum value to raytrace from is the origin
     if (wx < origin_x)
     {
@@ -596,6 +595,8 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
 bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, double& ox, double& oy, double wx,
                                        double wy) const
 {
+  static constexpr const double eps = 0.001;
+
   // copy original sensor origin
   const double original_ox = ox;
   const double original_oy = oy;
@@ -629,6 +630,10 @@ bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, 
     {
       return false;
     }
+    
+    // shift origin slightly inward
+    ox += eps * (wx - ox);  
+    oy += eps * (wy - oy);
     return true;
   }
 
@@ -641,13 +646,14 @@ bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, 
   // Choose the closest intersection point as origin
   if (distance1 < distance2)
   {
-    ox = intersection1.x();
-    oy = intersection1.y();
+    // shift both points slightly
+    ox = intersection1.x() + eps * (wx - ox);  
+    oy = intersection1.y() + eps * (wy - oy);
   }
   else
   {
-    ox = intersection2.x();
-    oy = intersection2.y();
+    ox = intersection2.x() + eps * (wx - ox);
+    oy = intersection2.y() + eps * (wy - oy);
   }
 
   // check if the distance between new origin and original sensor's origin is within range
