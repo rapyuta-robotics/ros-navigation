@@ -595,12 +595,10 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
 bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, double& ox, double& oy, double wx,
                                        double wy) const
 {
-  static constexpr const double eps = 0.001;
-
   // copy original sensor origin
   const double original_ox = ox;
   const double original_oy = oy;
-  
+
   // Define the sensor ray as a linestring (from the sensor origin to the endpoint)
   Linestring sensor_ray;
   bg::append(sensor_ray, Point(ox, oy));
@@ -610,6 +608,16 @@ bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, 
 
   // find the intersection between the map and the line defined by the sensor ray
   bg::intersection(sensor_ray, map_boundary_, intersection_points);
+
+  // function to slightly shift the origin inwards to avoid floating point errors
+  const auto shift_inwards = [&ox, &oy, &wx, &wy]()
+  {
+    static constexpr const double eps = 0.001;
+    const double vx = (wx - ox) / std::hypot(wx - ox, wy - oy);
+    const double vy = (wy - oy) / std::hypot(wx - ox, wy - oy);
+    ox += eps * vx;
+    oy += eps * vy;
+  };
 
   // the map is a rectangle, so there should be at least one intersection point
   // and at maximum 2 intersection points
@@ -630,10 +638,8 @@ bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, 
     {
       return false;
     }
-    
-    // shift origin slightly inward
-    ox += eps * (wx - ox);  
-    oy += eps * (wy - oy);
+
+    shift_inwards();
     return true;
   }
 
@@ -646,14 +652,13 @@ bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, 
   // Choose the closest intersection point as origin
   if (distance1 < distance2)
   {
-    // shift both points slightly
-    ox = intersection1.x() + eps * (wx - ox);  
-    oy = intersection1.y() + eps * (wy - oy);
+    ox = intersection1.x();
+    oy = intersection1.y();
   }
   else
   {
-    ox = intersection2.x() + eps * (wx - ox);
-    oy = intersection2.y() + eps * (wy - oy);
+    ox = intersection2.x();
+    oy = intersection2.y();
   }
 
   // check if the distance between new origin and original sensor's origin is within range
@@ -669,6 +674,8 @@ bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, 
   {
     return false;
   }
+
+  shift_inwards();
   return true;
 }
 
