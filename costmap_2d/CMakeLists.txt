@@ -55,7 +55,6 @@ generate_dynamic_reconfigure_options(
   cfg/GenericPlugin.cfg
   cfg/InflationPlugin.cfg
   cfg/VoxelPlugin.cfg
-  cfg/StaticPlugin.cfg
 )
 
 catkin_package(
