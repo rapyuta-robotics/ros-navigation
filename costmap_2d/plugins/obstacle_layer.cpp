@@ -549,7 +549,6 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
     // to isn't off the costmap and scale if necessary
     double a = wx - ox;
     double b = wy - oy;
-
     // the minimum value to raytrace from is the origin
     if (wx < origin_x)
     {
@@ -599,7 +598,7 @@ bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, 
   // copy original sensor origin
   const double original_ox = ox;
   const double original_oy = oy;
-  
+
   // Define the sensor ray as a linestring (from the sensor origin to the endpoint)
   Linestring sensor_ray;
   bg::append(sensor_ray, Point(ox, oy));
@@ -609,6 +608,17 @@ bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, 
 
   // find the intersection between the map and the line defined by the sensor ray
   bg::intersection(sensor_ray, map_boundary_, intersection_points);
+
+  // function to slightly shift the origin inwards to avoid floating point errors
+  const auto shift_center_inwards = [&ox, &oy, &wx, &wy]()
+  {
+    static constexpr double eps = 0.001;
+    const double magnitude = std::hypot(wx - ox, wy - oy);
+    const double vx = (wx - ox) / magnitude;
+    const double vy = (wy - oy) / magnitude;
+    ox += eps * vx;
+    oy += eps * vy;
+  };
 
   // the map is a rectangle, so there should be at least one intersection point
   // and at maximum 2 intersection points
@@ -629,6 +639,8 @@ bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, 
     {
       return false;
     }
+
+    shift_center_inwards();
     return true;
   }
 
@@ -663,6 +675,8 @@ bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, 
   {
     return false;
   }
+
+  shift_center_inwards();
   return true;
 }
 
