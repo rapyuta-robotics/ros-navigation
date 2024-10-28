@@ -61,7 +61,7 @@ public:
    */
   void odomCallback(const nav_msgs::Odometry::ConstPtr& msg);
 
-  void getOdom(nav_msgs::Odometry& base_odom);
+  void getOdom(nav_msgs::Odometry& base_odom) const;
 
   void getRobotVel(geometry_msgs::PoseStamped& robot_vel);
 
@@ -82,7 +82,7 @@ private:
   // we listen on odometry on the odom topic
   ros::Subscriber odom_sub_;
   nav_msgs::Odometry base_odom_;
-  boost::mutex odom_mutex_;
+  mutable boost::mutex odom_mutex_;
   // global tf frame id
   std::string frame_id_; ///< The frame_id associated this data
 };
