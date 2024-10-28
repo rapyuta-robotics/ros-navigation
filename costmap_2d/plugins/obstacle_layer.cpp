@@ -610,11 +610,12 @@ bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, 
   bg::intersection(sensor_ray, map_boundary_, intersection_points);
 
   // function to slightly shift the origin inwards to avoid floating point errors
-  const auto shift_inwards = [&ox, &oy, &wx, &wy]()
+  const auto shift_center_inwards = [&ox, &oy, &wx, &wy]()
   {
-    static constexpr const double eps = 0.001;
-    const double vx = (wx - ox) / std::hypot(wx - ox, wy - oy);
-    const double vy = (wy - oy) / std::hypot(wx - ox, wy - oy);
+    static constexpr double eps = 0.001;
+    const double magnitude = std::hypot(wx - ox, wy - oy);
+    const double vx = (wx - ox) / magnitude;
+    const double vy = (wy - oy) / magnitude;
     ox += eps * vx;
     oy += eps * vy;
   };
@@ -639,7 +640,7 @@ bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, 
       return false;
     }
 
-    shift_inwards();
+    shift_center_inwards();
     return true;
   }
 
@@ -675,7 +676,7 @@ bool ObstacleLayer::adjustSensorOrigin(const Observation& clearing_observation, 
     return false;
   }
 
-  shift_inwards();
+  shift_center_inwards();
   return true;
 }
 
