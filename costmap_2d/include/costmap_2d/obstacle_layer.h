@@ -126,6 +126,14 @@ public:
   void addStaticObservation(costmap_2d::Observation& obs, bool marking, bool clearing);
   void clearStaticObservations(bool marking, bool clearing);
 
+  /**
+   * @brief  See costmap_2d::setConvexPolygonCost for details; It updates the cell timeout
+   * @param polygon The polygon to perform the operation on
+   * @param cost_value The value to set costs to
+   * @return True if the polygon was filled... false if it could not be filled
+   */
+  bool setConvexPolygonCost(const std::vector<geometry_msgs::Point>& polygon, unsigned char cost_value);
+
 protected:
   virtual void setupDynamicReconfigure(ros::NodeHandle& nh);
 
@@ -153,14 +161,6 @@ protected:
    */
   virtual void raytraceFreespace(const costmap_2d::Observation& clearing_observation, double* min_x, double* min_y,
                                  double* max_x, double* max_y);
-
-  /**
-   * @brief  See costmap_2d::setConvexPolygonCost for details; It updates the cell timeout
-   * @param polygon The polygon to perform the operation on
-   * @param cost_value The value to set costs to
-   * @return True if the polygon was filled... false if it could not be filled
-   */
-  bool setConvexPolygonCost(const std::vector<geometry_msgs::Point>& polygon, unsigned char cost_value);
 
   /**
    * @brief Adjust the origin of the sensor to be inside the map if raytrace_outside_map is true.
