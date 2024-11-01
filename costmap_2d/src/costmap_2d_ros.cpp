@@ -411,9 +411,6 @@ void Costmap2DROS::setUnpaddedRobotFootprint(const std::vector<geometry_msgs::Po
 
 void Costmap2DROS::movementCB(const ros::TimerEvent &event)
 {
-  // don't allow configuration to happen while this check occurs
-  // boost::recursive_mutex::scoped_lock mcl(configuration_mutex_);
-
   geometry_msgs::PoseStamped new_pose;
 
   if (!getRobotPose(new_pose))
@@ -482,6 +479,9 @@ void Costmap2DROS::mapUpdateLoop(double frequency)
 
 void Costmap2DROS::updateMap()
 {
+  // allow parallel calls, in case user wants to update without waiting for the update loop
+  boost::recursive_mutex::scoped_lock lock(update_mutex_);
+
   if (!stop_updates_)
   {
     // get global pose
