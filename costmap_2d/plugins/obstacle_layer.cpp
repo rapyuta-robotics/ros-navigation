@@ -241,6 +241,7 @@ void ObstacleLayer::reconfigureCB(costmap_2d::ObstaclePluginConfig &config, uint
   max_obstacle_height_ = config.max_obstacle_height;
   combination_method_ = config.combination_method;
   raytrace_outside_map_ = config.raytrace_outside_map;
+  setupCellsTimeout(config.cell_clearing_timeout);
 }
 
 void ObstacleLayer::laserScanCallback(const sensor_msgs::LaserScanConstPtr& message,
@@ -352,6 +353,7 @@ void ObstacleLayer::updateBounds(double robot_x, double robot_y, double robot_ya
     updateOrigin(robot_x - getSizeInMetersX() / 2, robot_y - getSizeInMetersY() / 2);
   useExtraBounds(min_x, min_y, max_x, max_y);
   updateMapPolygon();
+  setupCellsTimeout(cell_clearing_timeout_);
 
   bool current = true;
   std::vector<Observation> observations, clearing_observations;
@@ -364,6 +366,24 @@ void ObstacleLayer::updateBounds(double robot_x, double robot_y, double robot_ya
 
   // update the global current status
   current_ = current;
+
+  // set all cells that timeout to NO_INFORMATION
+  if (!rolling_window_ && !last_updated_.empty())
+  {
+    for (unsigned int i = 0; i < last_updated_.size(); i++)
+    {
+      if (last_updated_[i] + ros::Duration(cell_clearing_timeout_) < ros::Time::now())
+      {
+        costmap_[i] = NO_INFORMATION;
+
+        double wx, wy;
+        unsigned int mx, my;
+        indexToCells(i, mx, my);
+        mapToWorld(mx, my, wx, wy);
+        touch(wx, wy, min_x, min_y, max_x, max_y);
+      }
+    }
+  }
 
   // raytrace freespace
   for (unsigned int i = 0; i < clearing_observations.size(); ++i)
@@ -416,6 +436,7 @@ void ObstacleLayer::updateBounds(double robot_x, double robot_y, double robot_ya
 
       unsigned int index = getIndex(mx, my);
       costmap_[index] = LETHAL_OBSTACLE;
+      updateCellTimeout(index);
       touch(px, py, min_x, min_y, max_x, max_y);
     }
   }
@@ -585,8 +606,16 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
 
     unsigned int cell_raytrace_range = cellDistance(clearing_observation.raytrace_range_);
     MarkCell marker(costmap_, FREE_SPACE);
+
+    // mark and update last time
+    const auto action = [&](unsigned int offset)
+    {
+      marker(offset);
+      updateCellTimeout(offset);
+    };
+
     // and finally... we can execute our trace to clear obstacles along that line
-    raytraceLine(marker, x0, y0, x1, y1, cell_raytrace_range);
+    raytraceLine(action, x0, y0, x1, y1, cell_raytrace_range);
 
     updateRaytraceBounds(ox, oy, wx, wy, clearing_observation.raytrace_range_, min_x, min_y, max_x, max_y);
   }
@@ -720,6 +749,83 @@ void ObstacleLayer::reset()
   resetMaps();
   current_ = true;
   activate();
+}
+
+void ObstacleLayer::setupCellsTimeout(const double new_cell_clearing_timeout)
+{
+  // if we're using rolling window, we don't clear cells based on timeout
+  if (rolling_window_)
+  {
+    return;
+  }
+
+  // new parameter is negative, clear all cells (disable timeout)
+  if (new_cell_clearing_timeout < 0)
+  {
+    last_updated_.clear();
+    return;
+  }
+
+  // check if map's size matches vector; otherwise, resize vector
+  // we need to check this first, because width and height can change in costmap_2d_ros
+  if (last_updated_.size() != size_x_ * size_y_)
+  {
+    last_updated_.clear();
+    last_updated_.resize(size_x_ * size_y_, ros::Time::now());
+    cell_clearing_timeout_ = new_cell_clearing_timeout;
+    return;
+  }
+
+  // if parameter did not change, return
+  if (new_cell_clearing_timeout == cell_clearing_timeout_)
+  {
+    return;
+  }
+
+  // parameter has changed, create new cell update tracking vector
+  last_updated_.clear();
+  last_updated_.resize(size_x_ * size_y_, ros::Time::now());
+  cell_clearing_timeout_ = new_cell_clearing_timeout;
+}
+
+
+void ObstacleLayer::updateCellTimeout(int index)
+{
+  if (!rolling_window_ && !last_updated_.empty() && index < last_updated_.size())
+  {
+    last_updated_[index] = ros::Time::now();
+  }
+}
+
+bool ObstacleLayer::setConvexPolygonCost(const std::vector<geometry_msgs::Point>& polygon, unsigned char cost_value)
+{
+  // copied from costmap_2d/costmap_2d.cpp
+  // we assume the polygon is given in the global_frame... we need to transform it to map coordinates
+  std::vector<MapLocation> map_polygon;
+  for (unsigned int i = 0; i < polygon.size(); ++i)
+  {
+    MapLocation loc;
+    if (!worldToMap(polygon[i].x, polygon[i].y, loc.x, loc.y))
+    {
+      // ("Polygon lies outside map bounds, so we can't fill it");
+      return false;
+    }
+    map_polygon.push_back(loc);
+  }
+
+  std::vector<MapLocation> polygon_cells;
+
+  // get the cells that fill the polygon
+  convexFillCells(map_polygon, polygon_cells);
+
+  // set the cost of those cells
+  for (unsigned int i = 0; i < polygon_cells.size(); ++i)
+  {
+    unsigned int index = getIndex(polygon_cells[i].x, polygon_cells[i].y);
+    costmap_[index] = cost_value;
+    updateCellTimeout(index);  // this is the only change
+  }
+  return true;
 }
 
 }  // namespace costmap_2d

@@ -45,6 +45,7 @@
 
 #include <nav_msgs/OccupancyGrid.h>
 
+#include <ros/time.h>
 #include <sensor_msgs/LaserScan.h>
 #include <laser_geometry/laser_geometry.h>
 #include <sensor_msgs/PointCloud.h>
@@ -125,6 +126,14 @@ public:
   void addStaticObservation(costmap_2d::Observation& obs, bool marking, bool clearing);
   void clearStaticObservations(bool marking, bool clearing);
 
+  /**
+   * @brief  See costmap_2d::setConvexPolygonCost for details; It updates the cell timeout
+   * @param polygon The polygon to perform the operation on
+   * @param cost_value The value to set costs to
+   * @return True if the polygon was filled... false if it could not be filled
+   */
+  bool setConvexPolygonCost(const std::vector<geometry_msgs::Point>& polygon, unsigned char cost_value);
+
 protected:
   virtual void setupDynamicReconfigure(ros::NodeHandle& nh);
 
@@ -171,6 +180,18 @@ protected:
                             double* max_x, double* max_y);
 
   void updateMapPolygon();
+  
+  /**
+    * @brief  Update the cell timeout for a given index. Cells with a timeout are marked as NO_INFORMATION
+    * @param index The index of the cell to update
+   */
+  void updateCellTimeout(int index);
+
+  /**
+    * @brief Setup vector with last updated time for each cell
+    * @param new_cell_clearing_timeout The new cell clearing timeout
+   */
+  void setupCellsTimeout(const double new_cell_clearing_timeout);
 
   std::vector<geometry_msgs::Point> transformed_footprint_;
   bool footprint_clearing_enabled_;
@@ -197,6 +218,9 @@ protected:
   int combination_method_;
   bool raytrace_outside_map_;
   Polygon map_boundary_;
+
+  double cell_clearing_timeout_ = -1;
+  std::vector<ros::Time> last_updated_;
 
 private:
   void reconfigureCB(costmap_2d::ObstaclePluginConfig &config, uint32_t level);
