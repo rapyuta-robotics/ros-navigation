@@ -53,8 +53,8 @@ namespace costmap_2d
 
 enum class CombinationMethod
 {
-  MAXIMUM = 0,
-  OVERWRITE = 1,
+  OVERWRITE = 0,
+  MAXIMUM = 1,
   MASK = 2
 };
 

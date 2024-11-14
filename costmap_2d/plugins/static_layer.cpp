@@ -79,7 +79,7 @@ void StaticLayer::onInitialize()
   nh.param("trinary_costmap", trinary_costmap_, true);
 
   int combination_method_int;
-  nh.param("combination_method", combination_method_int, 1);
+  nh.param("combination_method", combination_method_int, 0);
   combination_method_ = static_cast<CombinationMethod>(combination_method_int);
 
   lethal_threshold_ = std::max(std::min(temp_lethal_threshold, 100), 0);
