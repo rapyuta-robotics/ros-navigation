@@ -51,7 +51,7 @@ using costmap_2d::NO_INFORMATION;
 namespace costmap_2d
 {
 
-StaticLayer::StaticLayer() : dsrv_(NULL)
+StaticLayer::StaticLayer() : dsrv_(NULL), param_map_info_(NULL)
 {
 }
 

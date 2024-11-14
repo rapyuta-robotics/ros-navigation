@@ -100,7 +100,6 @@ private:
   bool map_received_;
   bool has_updated_data_;
   unsigned int x_, y_, width_, height_;
-  MapInfo* param_map_info_;
   bool track_unknown_space_;
   bool first_map_only_;  ///< @brief Store the first static map and reuse it on reinitializing
   bool trinary_costmap_;
@@ -110,6 +109,7 @@ private:
   CombinationMethod combination_method_;
 
   dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig>* dsrv_;
+  MapInfo* param_map_info_;
 };
 
 }  // namespace costmap_2d
