@@ -72,12 +72,15 @@ void StaticLayer::onInitialize()
   nh.param("subscribe_to_updates", subscribe_to_updates_, false);
 
   nh.param("track_unknown_space", track_unknown_space_, true);
-  nh.param("use_maximum", use_maximum_, false);
 
   int temp_lethal_threshold, temp_unknown_cost_value;
   nh.param("lethal_cost_threshold", temp_lethal_threshold, int(100));
   nh.param("unknown_cost_value", temp_unknown_cost_value, int(-1));
   nh.param("trinary_costmap", trinary_costmap_, true);
+
+  int combination_method_int;
+  nh.param("combination_method", combination_method_int, 0);
+  combination_method_ = static_cast<CombinationMethod>(combination_method_int);
 
   lethal_threshold_ = std::max(std::min(temp_lethal_threshold, 100), 0);
   unknown_cost_value_ = temp_unknown_cost_value;
@@ -104,7 +107,6 @@ void StaticLayer::onInitialize()
     {
       ROS_INFO("Subscribing to updates");
       map_update_sub_ = g_nh.subscribe(map_topic + "_updates", 10, &StaticLayer::incomingUpdate, this);
-
     }
   }
   else
@@ -118,12 +120,12 @@ void StaticLayer::onInitialize()
   }
 
   dsrv_ = new dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig>(nh);
-  dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig>::CallbackType cb = boost::bind(
-      &StaticLayer::reconfigureCB, this, _1, _2);
+  dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig>::CallbackType cb =
+      boost::bind(&StaticLayer::reconfigureCB, this, _1, _2);
   dsrv_->setCallback(cb);
 }
 
-void StaticLayer::reconfigureCB(costmap_2d::GenericPluginConfig &config, uint32_t level)
+void StaticLayer::reconfigureCB(costmap_2d::GenericPluginConfig& config, uint32_t level)
 {
   if (config.enabled != enabled_)
   {
@@ -314,10 +316,12 @@ void StaticLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int
   if (!layered_costmap_->isRolling())
   {
     // if not rolling, the layered costmap (master_grid) has same coordinates as this layer
-    if (!use_maximum_)
+    if (combination_method_ == CombinationMethod::OVERWRITE)
       updateWithTrueOverwrite(master_grid, min_i, min_j, max_i, max_j);
-    else
+    else if (combination_method_ == CombinationMethod::MAXIMUM)
       updateWithMax(master_grid, min_i, min_j, max_i, max_j);
+    else
+      updateWithMask(master_grid, min_i, min_j, max_i, max_j);
   }
   else
   {
@@ -346,12 +350,14 @@ void StaticLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int
         layered_costmap_->getCostmap()->mapToWorld(i, j, wx, wy);
         // Transform from global_frame_ to map_frame_
         tf2::Vector3 p(wx, wy, 0);
-        p = tf2_transform*p;
+        p = tf2_transform * p;
         // Set master_grid with cell from map
         if (worldToMap(p.x(), p.y(), mx, my))
         {
-          if (!use_maximum_)
+          if (combination_method_ == CombinationMethod::OVERWRITE)
             master_grid.setCost(i, j, getCost(mx, my));
+          else if (combination_method_ == CombinationMethod::MASK)
+            mask(master_grid, master_grid.getIndex(i, j), getIndex(mx, my));
           else
             master_grid.setCost(i, j, std::max(getCost(mx, my), master_grid.getCost(i, j)));
         }

@@ -156,4 +156,33 @@ void CostmapLayer::updateWithAddition(costmap_2d::Costmap2D& master_grid, int mi
     }
   }
 }
+
+void CostmapLayer::updateWithMask(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j)
+{
+  if (!enabled_)
+    return;
+  unsigned char* master_array = master_grid.getCharMap();
+  unsigned int span = master_grid.getSizeInCellsX();
+
+  for (int j = min_j; j < max_j; j++)
+  {
+    unsigned int it = j * span + min_i;
+    for (int i = min_i; i < max_i; i++)
+    {
+      mask(master_grid, it, it);
+      it++;
+    }
+  }
+}
+
+void CostmapLayer::mask(costmap_2d::Costmap2D& master_grid, unsigned int master_grid_index, unsigned int costmap_index)
+{
+  unsigned char* master_array = master_grid.getCharMap();
+  if (costmap_[costmap_index] == costmap_2d::LETHAL_OBSTACLE)
+  {
+    master_array[master_grid_index] = costmap_2d::FREE_SPACE;
+    return;
+  }
+}
+
 }  // namespace costmap_2d
