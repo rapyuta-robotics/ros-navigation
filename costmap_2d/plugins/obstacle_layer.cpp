@@ -238,6 +238,10 @@ void ObstacleLayer::reconfigureCB(costmap_2d::ObstaclePluginConfig &config, uint
 {
   enabled_ = config.enabled;
   footprint_clearing_enabled_ = config.footprint_clearing_enabled;
+  if (footprint_clearing_enabled_) {
+    reduced_footprint_enabled_ = config.reduced_footprint.enabled
+    footprint_reduction_size_ = config.footprint_reduction_size;
+  }
   max_obstacle_height_ = config.max_obstacle_height;
   combination_method_ = config.combination_method;
   raytrace_outside_map_ = config.raytrace_outside_map;
@@ -444,11 +448,57 @@ void ObstacleLayer::updateBounds(double robot_x, double robot_y, double robot_ya
   updateFootprint(robot_x, robot_y, robot_yaw, min_x, min_y, max_x, max_y);
 }
 
+void ObstacleLayer::computeFootprintCenter(const std::vector<geometry_msgs::Point>& footprint)
+{
+    double sum_x = 0.0, sum_y = 0.0;
+    for (const auto& point : footprint)
+    {
+        sum_x += point.x;
+        sum_y += point.y;
+    }
+
+    footprint_center_.x = sum_x / footprint.size();
+    footprint_center_.y = sum_y / footprint.size();
+}
+
+std::vector<geometry_msgs::Point> ObstacleLayer::getReducedFootprint(const std::vector<geometry_msgs::Point>& original_footprint, double reduction_size)
+{
+    std::vector<geometry_msgs::Point> reduced_footprint;
+
+    for (size_t i = 0; i < original_footprint.size(); ++i)
+    {
+        const auto& p = original_footprint[i];
+        double dx = p.x - footprint_center_.x;
+        double dy = p.y - footprint_center_.y;
+
+        double distance = sqrt(dx * dx + dy * dy);
+        if (distance > reduction_size)
+        {
+            double scale = (distance - reduction_size) / distance;
+            geometry_msgs::Point new_point;
+            new_point.x = footprint_center_.x + dx * scale;
+            new_point.y = footprint_center_.y + dy * scale;
+            reduced_footprint.push_back(new_point);
+        }
+        else
+        {
+            reduced_footprint.push_back(footprint_center_);
+        }
+    }
+
+    return reduced_footprint;
+}
+
 void ObstacleLayer::updateFootprint(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
                                     double* max_x, double* max_y)
 {
+    computeFootprintCenter(getFootprint());
     if (!footprint_clearing_enabled_) return;
-    transformFootprint(robot_x, robot_y, robot_yaw, getFootprint(), transformed_footprint_);
+    const std::vector<geometry_msgs::Point>& footprint_to_use = (reduce_footprint_enabled_)
+        ? getReducedFootprint(getFootprint(), footprint_reduction_size_)
+        : getFootprint();
+
+    transformFootprint(robot_x, robot_y, robot_yaw, footprint_to_use, transformed_footprint_);
 
     for (unsigned int i = 0; i < transformed_footprint_.size(); i++)
     {
@@ -460,7 +510,10 @@ void ObstacleLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, i
 {
   if (footprint_clearing_enabled_)
   {
-    setConvexPolygonCost(transformed_footprint_, costmap_2d::FREE_SPACE);
+    const std::vector<geometry_msgs::Point>& footprint_to_use = (reduce_footprint_enabled_)
+            ? reduced_footprint_
+            : transformed_footprint_;
+        setConvexPolygonCost(footprint_to_use, costmap_2d::FREE_SPACE);
   }
 
   switch (combination_method_)
@@ -565,7 +618,7 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
     {
       continue;
     }
-    
+
     // now we also need to make sure that the enpoint we're raytracing
     // to isn't off the costmap and scale if necessary
     double a = wx - ox;
