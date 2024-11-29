@@ -239,7 +239,7 @@ void ObstacleLayer::reconfigureCB(costmap_2d::ObstaclePluginConfig &config, uint
   enabled_ = config.enabled;
   footprint_clearing_enabled_ = config.footprint_clearing_enabled;
   if (footprint_clearing_enabled_) {
-    reduced_footprint_enabled_ = config.reduced_footprint.enabled
+    reduced_footprint_enabled_ = config.reduced_footprint.enabled;
     footprint_reduction_size_ = config.footprint_reduction_size;
   }
   max_obstacle_height_ = config.max_obstacle_height;
