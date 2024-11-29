@@ -239,7 +239,7 @@ void ObstacleLayer::reconfigureCB(costmap_2d::ObstaclePluginConfig &config, uint
   enabled_ = config.enabled;
   footprint_clearing_enabled_ = config.footprint_clearing_enabled;
   if (footprint_clearing_enabled_) {
-    reduced_footprint_enabled_ = config.reduced_footprint_enabled.enabled;
+    reduced_footprint_enabled_ = config.reduced_footprint_enabled;
     footprint_reduction_size_ = config.footprint_reduction_size;
   }
   max_obstacle_height_ = config.max_obstacle_height;
@@ -494,7 +494,7 @@ void ObstacleLayer::updateFootprint(double robot_x, double robot_y, double robot
 {
     computeFootprintCenter(getFootprint());
     if (!footprint_clearing_enabled_) return;
-    const std::vector<geometry_msgs::Point>& footprint_to_use = (reduce_footprint_enabled_)
+    const std::vector<geometry_msgs::Point>& footprint_to_use = (reduced_footprint_enabled_)
         ? getReducedFootprint(getFootprint(), footprint_reduction_size_)
         : getFootprint();
 
@@ -510,7 +510,7 @@ void ObstacleLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, i
 {
   if (footprint_clearing_enabled_)
   {
-    const std::vector<geometry_msgs::Point>& footprint_to_use = (reduce_footprint_enabled_)
+    const std::vector<geometry_msgs::Point>& footprint_to_use = (reduced_footprint_enabled_)
             ? reduced_footprint_
             : transformed_footprint_;
         setConvexPolygonCost(footprint_to_use, costmap_2d::FREE_SPACE);
