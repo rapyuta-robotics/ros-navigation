@@ -465,29 +465,30 @@ std::vector<geometry_msgs::Point> ObstacleLayer::getReducedFootprint(const std::
 {
     std::vector<geometry_msgs::Point> reduced_footprint;
 
-    for (size_t i = 0; i < original_footprint.size(); ++i)
+    for (const auto& p : original_footprint)
     {
-        const auto& p = original_footprint[i];
         double dx = p.x - footprint_center_.x;
         double dy = p.y - footprint_center_.y;
 
         double distance = sqrt(dx * dx + dy * dy);
-        if (distance > reduction_size)
+        geometry_msgs::Point new_point;
+
+        if (distance > 0)
         {
             double scale = (distance - reduction_size) / distance;
-            geometry_msgs::Point new_point;
             new_point.x = footprint_center_.x + dx * scale;
             new_point.y = footprint_center_.y + dy * scale;
-            reduced_footprint.push_back(new_point);
         }
         else
         {
-            reduced_footprint.push_back(footprint_center_);
+            new_point = footprint_center_;
         }
-    }
 
+        reduced_footprint.push_back(new_point);
+    }
     return reduced_footprint;
 }
+
 
 void ObstacleLayer::updateFootprint(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
                                     double* max_x, double* max_y)
