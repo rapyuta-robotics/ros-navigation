@@ -242,6 +242,10 @@ void ObstacleLayer::reconfigureCB(costmap_2d::ObstaclePluginConfig &config, uint
     reduced_footprint_enabled_ = config.reduced_footprint_enabled;
     footprint_reduction_size_ = config.footprint_reduction_size;
   }
+  else{
+    reduced_footprint_enabled_ = false;
+    footprint_reduction_size_ = 0.0;
+  }
   max_obstacle_height_ = config.max_obstacle_height;
   combination_method_ = config.combination_method;
   raytrace_outside_map_ = config.raytrace_outside_map;
@@ -511,10 +515,7 @@ void ObstacleLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, i
 {
   if (footprint_clearing_enabled_)
   {
-    const std::vector<geometry_msgs::Point>& footprint_to_use = (reduced_footprint_enabled_)
-            ? reduced_footprint_
-            : transformed_footprint_;
-        setConvexPolygonCost(footprint_to_use, costmap_2d::FREE_SPACE);
+    setConvexPolygonCost(transformed_footprint_, costmap_2d::FREE_SPACE);
   }
 
   switch (combination_method_)
