@@ -239,13 +239,9 @@ void ObstacleLayer::reconfigureCB(costmap_2d::ObstaclePluginConfig &config, uint
   enabled_ = config.enabled;
   footprint_clearing_enabled_ = config.footprint_clearing_enabled;
   if (footprint_clearing_enabled_) {
-    reduced_footprint_enabled_ = config.reduced_footprint_enabled;
-    footprint_reduction_size_ = config.footprint_reduction_size;
+    footprint_clearing_padding_ = config.footprint_clearing_padding;
   }
-  else{
-    reduced_footprint_enabled_ = false;
-    footprint_reduction_size_ = 0.0;
-  }
+
   max_obstacle_height_ = config.max_obstacle_height;
   combination_method_ = config.combination_method;
   raytrace_outside_map_ = config.raytrace_outside_map;
@@ -499,8 +495,8 @@ void ObstacleLayer::updateFootprint(double robot_x, double robot_y, double robot
 {
     computeFootprintCenter(getFootprint());
     if (!footprint_clearing_enabled_) return;
-    const std::vector<geometry_msgs::Point>& footprint_to_use = (reduced_footprint_enabled_)
-        ? getReducedFootprint(getFootprint(), footprint_reduction_size_)
+    const std::vector<geometry_msgs::Point>& footprint_to_use = (footprint_clearing_enabled_)
+        ? getReducedFootprint(getFootprint(), footprint_clearing_padding_)
         : getFootprint();
 
     transformFootprint(robot_x, robot_y, robot_yaw, footprint_to_use, transformed_footprint_);

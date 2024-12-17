@@ -195,8 +195,7 @@ protected:
 
   std::vector<geometry_msgs::Point> transformed_footprint_;
   bool footprint_clearing_enabled_;
-  bool reduced_footprint_enabled_;
-  double footprint_reduction_size_;
+  double footprint_clearing_padding_;
   geometry_msgs::Point footprint_center_;
   void updateFootprint(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
                        double* max_x, double* max_y);
