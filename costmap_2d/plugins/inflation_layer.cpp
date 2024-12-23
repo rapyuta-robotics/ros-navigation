@@ -223,6 +223,7 @@ void InflationLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, 
   // We use a map<distance, list> to emulate the priority queue used before, with a notable performance boost
   // Start with lethal obstacles: by definition distance is 0.0
   auto& obs_bin = inflation_cells_[0];
+  obs_bin.reserve(200);
   for (int j = min_j; j < max_j; j++)
   {
     for (int i = min_i; i < max_i; i++)
@@ -238,8 +239,9 @@ void InflationLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, 
 
   // Process cells by increasing distance; new cells are appended to the corresponding distance bin, so they
   // can overtake previously inserted but farther away cells
-  for (const auto& dist_bin: inflation_cells_)
+  for (auto& dist_bin: inflation_cells_)
   {
+    dist_bin.reserve(200);
     for (const auto& current_cell: dist_bin)
     {
       // process all cells at distance dist_bin.first
@@ -276,12 +278,10 @@ void InflationLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, 
       if (my < size_y - 1)
         enqueue(index + size_x, mx, my + 1, sx, sy);
     }
-  }
 
-  for (auto& dist:inflation_cells_)
-  {
-    dist.clear();
-    dist.reserve(200);
+  // This level of inflation_cells_ is not needed anymore. We can free the memory
+  // Note that dist_bin.clear() is not enough, because it won't free the memory
+  dist_bin = std::vector<CellData>();
   }
 }
 
@@ -339,10 +339,6 @@ void InflationLayer::computeCaches()
   int max_dist = generateIntegerDistances();
   inflation_cells_.clear();
   inflation_cells_.resize(max_dist + 1);
-  for (auto& dist : inflation_cells_)
-  {
-      dist.reserve(200);
-  }
 }
 
 int InflationLayer::generateIntegerDistances()
