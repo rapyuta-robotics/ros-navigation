@@ -232,20 +232,27 @@ void InflationLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, 
       unsigned char cost = master_array[index];
       if (cost == LETHAL_OBSTACLE)
       {
-        obs_bin.emplace_back(index, i, j, i, j);
+        obs_bin.emplace_back(i, j, i, j);
       }
     }
   }
 
   // Process cells by increasing distance; new cells are appended to the corresponding distance bin, so they
   // can overtake previously inserted but farther away cells
-  for (auto& dist_bin: inflation_cells_)
+for (auto& dist_bin: inflation_cells_)
   {
     dist_bin.reserve(200);
-    for (const auto& current_cell: dist_bin)
+    for (std::size_t i = 0; i < dist_bin.size(); ++i)
     {
       // process all cells at distance dist_bin.first
-      unsigned int index = current_cell.index_;
+      // unsigned int index = current_cell.index_;
+      auto& current_cell = dist_bin[i];
+
+      unsigned int mx = current_cell.x_;
+      unsigned int my = current_cell.y_;
+      unsigned int sx = current_cell.src_x_;
+      unsigned int sy = current_cell.src_y_;
+      unsigned int index = master_grid.getIndex(mx, my);
 
       // ignore if already visited
       if (seen_[index])
@@ -254,11 +261,6 @@ void InflationLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, 
       }
 
       seen_[index] = true;
-
-      unsigned int mx = current_cell.x_;
-      unsigned int my = current_cell.y_;
-      unsigned int sx = current_cell.src_x_;
-      unsigned int sy = current_cell.src_y_;
 
       // assign the cost associated with the distance from an obstacle to the cell
       unsigned char cost = costLookup(mx, my, sx, sy);
@@ -299,7 +301,8 @@ inline void InflationLayer::enqueue(unsigned int index, unsigned int mx, unsigne
     const int r = cell_inflation_radius_ + 2;
 
     // push the cell data onto the inflation list and mark
-    inflation_cells_[distance_matrix_[mx - src_x+r][my - src_y+r]].emplace_back(index, mx, my, src_x, src_y);
+    const auto dist = distance_matrix_[mx - src_x + r][my - src_y + r];
+    inflation_cells_[dist].emplace_back(mx, my, src_x, src_y);
   }
 }
 
