@@ -239,7 +239,7 @@ void InflationLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, 
 
   // Process cells by increasing distance; new cells are appended to the corresponding distance bin, so they
   // can overtake previously inserted but farther away cells
-for (auto& dist_bin: inflation_cells_)
+  for (auto& dist_bin: inflation_cells_)
   {
     dist_bin.reserve(200);
     for (std::size_t i = 0; i < dist_bin.size(); ++i)
@@ -301,8 +301,7 @@ inline void InflationLayer::enqueue(unsigned int index, unsigned int mx, unsigne
     const int r = cell_inflation_radius_ + 2;
 
     // push the cell data onto the inflation list and mark
-    const auto dist = distance_matrix_[mx - src_x + r][my - src_y + r];
-    inflation_cells_[dist].emplace_back(mx, my, src_x, src_y);
+    inflation_cells_[distance_matrix_[mx - src_x + r][my - src_y + r]].emplace_back(mx, my, src_x, src_y);
   }
 }
 
