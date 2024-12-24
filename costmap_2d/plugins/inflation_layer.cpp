@@ -245,8 +245,7 @@ void InflationLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, 
     for (std::size_t i = 0; i < dist_bin.size(); ++i)
     {
       // process all cells at distance dist_bin.first
-      // unsigned int index = current_cell.index_;
-      auto& current_cell = dist_bin[i];
+      const auto& current_cell = dist_bin[i];
 
       unsigned int mx = current_cell.x_;
       unsigned int my = current_cell.y_;
