@@ -137,12 +137,23 @@ void transformFootprint(double x, double y, double theta, const std::vector<geom
 
 void padFootprint(std::vector<geometry_msgs::Point>& footprint, double padding)
 {
-  // pad footprint in place
-  for (unsigned int i = 0; i < footprint.size(); i++)
+  geometry_msgs::Point footprint_center;
+  double sum_x = 0.0, sum_y = 0.0;
+  for (const auto& point : footprint)
   {
-    geometry_msgs::Point& pt = footprint[ i ];
-    pt.x += sign0(pt.x) * padding;
-    pt.y += sign0(pt.y) * padding;
+      sum_x += point.x;
+      sum_y += point.y;
+  }
+  footprint_center.x = sum_x / footprint.size();
+  footprint_center.y = sum_y / footprint.size();
+
+  for (auto& point : footprint)
+  {
+      double dx = point.x - footprint_center.x;
+      double dy = point.y - footprint_center.y;
+
+      point.x = footprint_center.x + dx * padding;
+      point.y = footprint_center.y + dy * padding;
   }
 }
 
