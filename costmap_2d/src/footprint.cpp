@@ -139,21 +139,27 @@ void padFootprint(std::vector<geometry_msgs::Point>& footprint, double padding)
 {
   geometry_msgs::Point footprint_center;
   double sum_x = 0.0, sum_y = 0.0;
+
   for (const auto& point : footprint)
   {
-      sum_x += point.x;
-      sum_y += point.y;
+    sum_x += point.x;
+    sum_y += point.y;
   }
   footprint_center.x = sum_x / footprint.size();
   footprint_center.y = sum_y / footprint.size();
 
   for (auto& point : footprint)
   {
-      double dx = point.x - footprint_center.x;
-      double dy = point.y - footprint_center.y;
+    double dx = point.x - footprint_center.x;
+    double dy = point.y - footprint_center.y;
 
-      point.x = footprint_center.x + dx * (1 + padding);
-      point.y = footprint_center.y + dy * (1 + padding);
+    double distance = std::sqrt(dx * dx + dy * dy);
+
+    if (distance > 0.0)
+    {
+      point.x += padding * (dx / distance);
+      point.y += padding * (dy / distance);
+    }
   }
 }
 
