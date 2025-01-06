@@ -100,6 +100,13 @@ void transformFootprint(double x, double y, double theta, const std::vector<geom
                         geometry_msgs::PolygonStamped & oriented_footprint);
 
 /**
+ * @brief  Calculate the centroid of a vector of 2D points.
+ * @param  footprint A vector of points (type geometry_msgs::Point) representing a 2D polygon (footprint).
+ * @return The centroid of the footprint as a geometry_msgs::Point.
+ */
+geometry_msgs::Point calculateCentroid(const std::vector<geometry_msgs::Point>& footprint);
+
+/**
  * @brief Adds the specified amount of padding to the footprint (in place)
  */
 void padFootprint(std::vector<geometry_msgs::Point>& footprint, double padding);

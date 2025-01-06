@@ -44,24 +44,28 @@
 
 PLUGINLIB_EXPORT_CLASS(costmap_2d::StaticLayer, costmap_2d::Layer)
 
-using costmap_2d::NO_INFORMATION;
-using costmap_2d::LETHAL_OBSTACLE;
 using costmap_2d::FREE_SPACE;
+using costmap_2d::LETHAL_OBSTACLE;
+using costmap_2d::NO_INFORMATION;
 
 namespace costmap_2d
 {
 
-StaticLayer::StaticLayer() : dsrv_(NULL) {}
+StaticLayer::StaticLayer() : dsrv_(NULL), param_map_info_(NULL)
+{
+}
 
 StaticLayer::~StaticLayer()
 {
   if (dsrv_)
     delete dsrv_;
+  delete param_map_info_;
 }
 
 void StaticLayer::onInitialize()
 {
   ros::NodeHandle nh("~/" + name_), g_nh;
+  ros::NodeHandle pnh(ros::names::parentNamespace(nh.getNamespace()));
   current_ = true;
 
   global_frame_ = layered_costmap_->getGlobalFrameID();
@@ -81,6 +85,18 @@ void StaticLayer::onInitialize()
   int combination_method_int;
   nh.param("combination_method", combination_method_int, 0);
   combination_method_ = static_cast<CombinationMethod>(combination_method_int);
+
+  int width, height;
+  double origin_x, origin_y;
+  if (pnh.getParam("width", width) && pnh.getParam("height", height) && pnh.getParam("origin_x", origin_x) &&
+      pnh.getParam("origin_y", origin_y))
+  {
+    param_map_info_ = new MapInfo();
+    param_map_info_->width = width;
+    param_map_info_->height = height;
+    param_map_info_->origin_x = origin_x;
+    param_map_info_->origin_y = origin_y;
+  }
 
   lethal_threshold_ = std::max(std::min(temp_lethal_threshold, 100), 0);
   unknown_cost_value_ = temp_unknown_cost_value;
@@ -144,8 +160,8 @@ void StaticLayer::matchSize()
   if (!layered_costmap_->isRolling())
   {
     Costmap2D* master = layered_costmap_->getCostmap();
-    resizeMap(master->getSizeInCellsX(), master->getSizeInCellsY(), master->getResolution(),
-              master->getOriginX(), master->getOriginY());
+    resizeMap(master->getSizeInCellsX(), master->getSizeInCellsY(), master->getResolution(), master->getOriginX(),
+              master->getOriginY());
   }
 }
 
@@ -161,50 +177,71 @@ unsigned char StaticLayer::interpretValue(unsigned char value)
   else if (trinary_costmap_)
     return FREE_SPACE;
 
-  double scale = (double) value / lethal_threshold_;
+  double scale = (double)value / lethal_threshold_;
   return scale * LETHAL_OBSTACLE;
 }
 
 void StaticLayer::incomingMap(const nav_msgs::OccupancyGridConstPtr& new_map)
 {
   unsigned int size_x = new_map->info.width, size_y = new_map->info.height;
+  double origin_x = new_map->info.origin.position.x, origin_y = new_map->info.origin.position.y;
+  double resolution = new_map->info.resolution;
+
+  if (param_map_info_ && combination_method_ == CombinationMethod::MASK)
+  {
+    const double end_x = std::min(std::max(param_map_info_->origin_x + param_map_info_->width, origin_x),
+                                  origin_x + size_x * resolution);
+    const double end_y = std::min(std::max(param_map_info_->origin_y + param_map_info_->height, origin_y),
+                                  origin_y + size_y * resolution);
+    origin_x = std::min(std::max(param_map_info_->origin_x, origin_x), origin_x + size_x * resolution);
+    origin_y = std::min(std::max(param_map_info_->origin_y, origin_y), origin_y + size_y * resolution);
+    size_x = std::max(0u, static_cast<unsigned>((end_x - origin_x) / resolution));
+    size_y = std::max(0u, static_cast<unsigned>((end_y - origin_y) / resolution));
+    ROS_INFO_NAMED("static_layer", "new origin_x: %f, origin_y: %f, size_x: %d, size_y: %d", origin_x, origin_y, size_x,
+                   size_y);
+  }
 
   ROS_DEBUG("Received a %d X %d map at %f m/pix", size_x, size_y, new_map->info.resolution);
 
   // resize costmap if size, resolution or origin do not match
   Costmap2D* master = layered_costmap_->getCostmap();
-  if (!layered_costmap_->isRolling() &&
-      (master->getSizeInCellsX() != size_x ||
-       master->getSizeInCellsY() != size_y ||
-       master->getResolution() != new_map->info.resolution ||
-       master->getOriginX() != new_map->info.origin.position.x ||
-       master->getOriginY() != new_map->info.origin.position.y))
+  if (!layered_costmap_->isRolling() && (master->getSizeInCellsX() != size_x || master->getSizeInCellsY() != size_y ||
+                                         master->getResolution() != new_map->info.resolution ||
+                                         master->getOriginX() != origin_x || master->getOriginY() != origin_y))
   {
     // Update the size of the layered costmap (and all layers, including this one)
     ROS_INFO("Resizing costmap to %d X %d at %f m/pix", size_x, size_y, new_map->info.resolution);
-    layered_costmap_->resizeMap(size_x, size_y, new_map->info.resolution, new_map->info.origin.position.x,
-                                new_map->info.origin.position.y,
+    layered_costmap_->resizeMap(size_x, size_y, new_map->info.resolution, origin_x, origin_y,
                                 true /* set size_locked to true, prevents reconfigureCb from overriding map size*/);
   }
-  else if (size_x_ != size_x || size_y_ != size_y ||
-           resolution_ != new_map->info.resolution ||
-           origin_x_ != new_map->info.origin.position.x ||
-           origin_y_ != new_map->info.origin.position.y)
+  else if (size_x_ != size_x || size_y_ != size_y || resolution_ != new_map->info.resolution ||
+           origin_x_ != new_map->info.origin.position.x || origin_y_ != new_map->info.origin.position.y)
   {
     // only update the size of the costmap stored locally in this layer
     ROS_INFO("Resizing static layer to %d X %d at %f m/pix", size_x, size_y, new_map->info.resolution);
-    resizeMap(size_x, size_y, new_map->info.resolution,
-              new_map->info.origin.position.x, new_map->info.origin.position.y);
+    resizeMap(size_x, size_y, new_map->info.resolution, origin_x, origin_y);
   }
 
   unsigned int index = 0;
-
   // initialize the costmap with static data
   for (unsigned int i = 0; i < size_y; ++i)
   {
     for (unsigned int j = 0; j < size_x; ++j)
     {
-      unsigned char value = new_map->data[index];
+      unsigned int map_index = index;
+      if (param_map_info_ && combination_method_ == CombinationMethod::MASK)
+      {
+        // need to compute the index in the map data array
+        int mx = (int)((origin_x + j * resolution - new_map->info.origin.position.x) / resolution);
+        int my = (int)((origin_y + i * resolution - new_map->info.origin.position.y) / resolution);
+
+        if (mx > new_map->info.width || my > new_map->info.height)
+        {
+          continue;
+        }
+        map_index = my * new_map->info.width + mx;
+      }
+      unsigned char value = new_map->data[map_index];
       costmap_[index] = interpretValue(value);
       ++index;
     }
@@ -218,7 +255,7 @@ void StaticLayer::incomingMap(const nav_msgs::OccupancyGridConstPtr& new_map)
   map_received_ = true;
   has_updated_data_ = true;
 
-  // shutdown the map subscrber if firt_map_only_ flag is on
+  // shutdown the map subscrber if first_map_only_ flag is on
   if (first_map_only_)
   {
     ROS_INFO("Shutting down the map subscriber. first_map_only flag is on");
@@ -229,10 +266,10 @@ void StaticLayer::incomingMap(const nav_msgs::OccupancyGridConstPtr& new_map)
 void StaticLayer::incomingUpdate(const map_msgs::OccupancyGridUpdateConstPtr& update)
 {
   unsigned int di = 0;
-  for (unsigned int y = 0; y < update->height ; y++)
+  for (unsigned int y = 0; y < update->height; y++)
   {
     unsigned int index_base = (update->y + y) * size_x_;
-    for (unsigned int x = 0; x < update->width ; x++)
+    for (unsigned int x = 0; x < update->width; x++)
     {
       unsigned int index = index_base + x + update->x;
       costmap_[index] = interpretValue(update->data[di++]);
@@ -272,8 +309,8 @@ void StaticLayer::reset()
 void StaticLayer::updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
                                double* max_x, double* max_y)
 {
-
-  if( !layered_costmap_->isRolling() ){
+  if (!layered_costmap_->isRolling())
+  {
     if (!map_received_ || !(has_updated_data_ || has_extra_bounds_))
       return;
   }

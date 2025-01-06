@@ -135,14 +135,40 @@ void transformFootprint(double x, double y, double theta, const std::vector<geom
   }
 }
 
+geometry_msgs::Point calculateCentroid(const std::vector<geometry_msgs::Point>& footprint)
+{
+    geometry_msgs::Point center;
+    double sum_x = 0.0, sum_y = 0.0;
+
+    for (const auto& point : footprint)
+    {
+        sum_x += point.x;
+        sum_y += point.y;
+    }
+
+    if (!footprint.empty()) {
+        center.x = sum_x / footprint.size();
+        center.y = sum_y / footprint.size();
+    }
+
+    return center;
+}
+
 void padFootprint(std::vector<geometry_msgs::Point>& footprint, double padding)
 {
-  // pad footprint in place
-  for (unsigned int i = 0; i < footprint.size(); i++)
+  geometry_msgs::Point footprint_center = calculateCentroid(footprint);
+
+  for (auto& point : footprint)
   {
-    geometry_msgs::Point& pt = footprint[ i ];
-    pt.x += sign0(pt.x) * padding;
-    pt.y += sign0(pt.y) * padding;
+    double dx = point.x - footprint_center.x;
+    double dy = point.y - footprint_center.y;
+    double distance = std::hypot(dx, dy);
+
+    if (distance > 0.0)
+    {
+      point.x += padding * (dx / distance);
+      point.y += padding * (dy / distance);
+    }
   }
 }
 

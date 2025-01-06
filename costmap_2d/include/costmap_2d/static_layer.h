@@ -58,6 +58,13 @@ enum class CombinationMethod
   MASK = 2
 };
 
+struct MapInfo
+{
+  unsigned int width, height;
+  double origin_x, origin_y;
+  double resolution;
+};
+
 class StaticLayer : public CostmapLayer
 {
 public:
@@ -83,25 +90,26 @@ private:
    */
   void incomingMap(const nav_msgs::OccupancyGridConstPtr& new_map);
   void incomingUpdate(const map_msgs::OccupancyGridUpdateConstPtr& update);
-  void reconfigureCB(costmap_2d::GenericPluginConfig &config, uint32_t level);
+  void reconfigureCB(costmap_2d::GenericPluginConfig& config, uint32_t level);
 
   unsigned char interpretValue(unsigned char value);
 
   std::string global_frame_;  ///< @brief The global frame for the costmap
-  std::string map_frame_;  /// @brief frame that map is located in
+  std::string map_frame_;     /// @brief frame that map is located in
   bool subscribe_to_updates_;
   bool map_received_;
   bool has_updated_data_;
   unsigned int x_, y_, width_, height_;
   bool track_unknown_space_;
-  bool first_map_only_;      ///< @brief Store the first static map and reuse it on reinitializing
+  bool first_map_only_;  ///< @brief Store the first static map and reuse it on reinitializing
   bool trinary_costmap_;
   ros::Subscriber map_sub_, map_update_sub_;
 
   unsigned char lethal_threshold_, unknown_cost_value_;
   CombinationMethod combination_method_;
 
-  dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig> *dsrv_;
+  dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig>* dsrv_;
+  MapInfo* param_map_info_;
 };
 
 }  // namespace costmap_2d
