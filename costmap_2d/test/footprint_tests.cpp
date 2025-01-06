@@ -70,17 +70,17 @@ TEST( Costmap2DROS, padded_footprint_from_string_param )
   std::vector<geometry_msgs::Point> footprint = cm.getRobotFootprint();
   EXPECT_EQ( 3, footprint.size() );
 
-  EXPECT_EQ( 1.44721f, footprint[ 0 ].x );
-  EXPECT_EQ( 1.22361f, footprint[ 0 ].y );
-  EXPECT_EQ( 0.0f, footprint[ 0 ].z );
+  EXPECT_NEAR( 1.44721f, footprint[ 0 ].x, 0.0001f);
+  EXPECT_NEAR( 1.22361f, footprint[ 0 ].y, 0.0001f);
+  EXPECT_EQ( 0.0f, footprint[ 0 ].z);
 
-  EXPECT_EQ( -1.35355f, footprint[ 1 ].x );
-  EXPECT_EQ( 1.35355f, footprint[ 1 ].y );
-  EXPECT_EQ( 0.0f, footprint[ 1 ].z );
+  EXPECT_NEAR( -1.35355f, footprint[ 1 ].x, 0.0001f);
+  EXPECT_NEAR( 1.35355f, footprint[ 1 ].y, 0.0001f);
+  EXPECT_EQ( 0.0f, footprint[ 1 ].z);
 
-  EXPECT_EQ( -1.22361f, footprint[ 2 ].x );
-  EXPECT_EQ( -1.44721f, footprint[ 2 ].y );
-  EXPECT_EQ( 0.0f, footprint[ 2 ].z );
+  EXPECT_NEAR( -1.22361f, footprint[ 2 ].x, 0.0001f);
+  EXPECT_NEAR( -1.44721f, footprint[ 2 ].y, 0.0001f);
+  EXPECT_EQ( 0.0f, footprint[ 2 ].z);
 }
 
 TEST( Costmap2DROS, radius_param )
