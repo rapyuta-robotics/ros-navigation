@@ -240,7 +240,6 @@ void ObstacleLayer::reconfigureCB(costmap_2d::ObstaclePluginConfig &config, uint
   enabled_ = config.enabled;
   footprint_clearing_enabled_ = config.footprint_clearing_enabled;
   if (footprint_clearing_enabled_) {
-    reduced_footprint_.clear();
     reduced_footprint_ = getFootprint();
     footprint_clearing_padding_ = config.footprint_clearing_padding;
     costmap_2d::padFootprint(reduced_footprint_, -footprint_clearing_padding_);
