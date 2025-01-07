@@ -37,6 +37,7 @@
  *********************************************************************/
 #include <costmap_2d/obstacle_layer.h>
 #include <costmap_2d/costmap_math.h>
+#include <costmap_2d/footprint.h>
 #include <tf2_ros/message_filter.h>
 
 #include <pluginlib/class_list_macros.h>
@@ -239,7 +240,10 @@ void ObstacleLayer::reconfigureCB(costmap_2d::ObstaclePluginConfig &config, uint
   enabled_ = config.enabled;
   footprint_clearing_enabled_ = config.footprint_clearing_enabled;
   if (footprint_clearing_enabled_) {
+    reduced_footprint_.clear();
+    reduced_footprint_ = getFootprint();
     footprint_clearing_padding_ = config.footprint_clearing_padding;
+    costmap_2d::padFootprint(reduced_footprint_, -footprint_clearing_padding_);
   }
 
   max_obstacle_height_ = config.max_obstacle_height;
@@ -448,55 +452,13 @@ void ObstacleLayer::updateBounds(double robot_x, double robot_y, double robot_ya
   updateFootprint(robot_x, robot_y, robot_yaw, min_x, min_y, max_x, max_y);
 }
 
-void ObstacleLayer::computeFootprintCenter(const std::vector<geometry_msgs::Point>& footprint)
-{
-    double sum_x = 0.0, sum_y = 0.0;
-    for (const auto& point : footprint)
-    {
-        sum_x += point.x;
-        sum_y += point.y;
-    }
-
-    footprint_center_.x = sum_x / footprint.size();
-    footprint_center_.y = sum_y / footprint.size();
-}
-
-std::vector<geometry_msgs::Point> ObstacleLayer::getReducedFootprint(const std::vector<geometry_msgs::Point>& original_footprint, double reduction_size)
-{
-    std::vector<geometry_msgs::Point> reduced_footprint;
-
-    for (const auto& p : original_footprint)
-    {
-        double dx = p.x - footprint_center_.x;
-        double dy = p.y - footprint_center_.y;
-
-        double distance = sqrt(dx * dx + dy * dy);
-        geometry_msgs::Point new_point;
-
-        if (distance > 0)
-        {
-            double scale = (distance - reduction_size) / distance;
-            new_point.x = footprint_center_.x + dx * scale;
-            new_point.y = footprint_center_.y + dy * scale;
-        }
-        else
-        {
-            new_point = footprint_center_;
-        }
-
-        reduced_footprint.push_back(new_point);
-    }
-    return reduced_footprint;
-}
-
-
 void ObstacleLayer::updateFootprint(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
                                     double* max_x, double* max_y)
 {
     computeFootprintCenter(getFootprint());
     if (!footprint_clearing_enabled_) return;
     const std::vector<geometry_msgs::Point>& footprint_to_use = (footprint_clearing_enabled_)
-        ? getReducedFootprint(getFootprint(), footprint_clearing_padding_)
+        ? reduced_footprint_
         : getFootprint();
 
     transformFootprint(robot_x, robot_y, robot_yaw, footprint_to_use, transformed_footprint_);
