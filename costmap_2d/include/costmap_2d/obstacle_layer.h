@@ -199,9 +199,6 @@ protected:
   std::vector<geometry_msgs::Point> reduced_footprint_;
   void updateFootprint(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
                        double* max_x, double* max_y);
-
-  void computeFootprintCenter(const std::vector<geometry_msgs::Point>& footprint);
-  std::vector<geometry_msgs::Point> getReducedFootprint(const std::vector<geometry_msgs::Point>& original_footprint, double reduction_size);
   std::string global_frame_;  ///< @brief The global frame for the costmap
   double max_obstacle_height_;  ///< @brief Max Obstacle Height
 

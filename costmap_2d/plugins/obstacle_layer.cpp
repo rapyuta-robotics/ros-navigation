@@ -455,7 +455,6 @@ void ObstacleLayer::updateBounds(double robot_x, double robot_y, double robot_ya
 void ObstacleLayer::updateFootprint(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
                                     double* max_x, double* max_y)
 {
-    computeFootprintCenter(getFootprint());
     if (!footprint_clearing_enabled_) return;
     const std::vector<geometry_msgs::Point>& footprint_to_use = (footprint_clearing_enabled_)
         ? reduced_footprint_
