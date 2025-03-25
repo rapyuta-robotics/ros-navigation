@@ -605,11 +605,11 @@ double dwa_local_planner::DWACostmapModel::footprintCost(const geometry_msgs::Po
     for(unsigned int i = 0; i < footprint.size() - 1; ++i){
       //get the cell coord of the first point
       if(!costmap_.worldToMap(footprint[i].x, footprint[i].y, x0, y0))
-        return -3.0;
+        return 1.0; // if footprint outside the costmap then also positive cost 
 
       //get the cell coord of the second point
       if(!costmap_.worldToMap(footprint[i + 1].x, footprint[i + 1].y, x1, y1))
-        return -3.0;
+        return 1.0; // if footprint outside the costmap then also positive cost 
 
       line_cost = DWACostmapModel::lineCost(x0, x1, y0, y1);
       footprint_cost = std::max(line_cost, footprint_cost);
