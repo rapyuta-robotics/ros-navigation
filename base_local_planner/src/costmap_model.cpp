@@ -51,7 +51,7 @@ namespace base_local_planner {
     //  -2 if footprint covers at least a no-information cell, or
     //  -3 if footprint is [partially] outside the map, or
     //  a positive value for traversable space
-
+        std::cout << "\n\n\n\nCostmapModel\n\n\n";
     //used to put things into grid coordinates
     unsigned int cell_x, cell_y;
 

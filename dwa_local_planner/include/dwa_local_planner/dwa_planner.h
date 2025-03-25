@@ -61,9 +61,9 @@
 #include <base_local_planner/prefer_forward_cost_function.h>
 #include <base_local_planner/twirling_cost_function.h>
 #include <base_local_planner/simple_scored_sampling_planner.h>
-
 #include <nav_msgs/Path.h>
 #include <mbf_msgs/ExePathResult.h>
+
 
 namespace dwa_local_planner {
   using ExePathOutcome = mbf_msgs::ExePathResult::_outcome_type;
@@ -71,6 +71,25 @@ namespace dwa_local_planner {
    * @class DWAPlanner
    * @brief A class implementing a local planner using the Dynamic Window Approach
    */
+
+
+
+  class DWACostmapModel : public base_local_planner::CostmapModel {
+  public:
+      explicit DWACostmapModel(const costmap_2d::Costmap2D& costmap);
+      virtual ~DWACostmapModel() = default;
+
+      double footprintCost(const geometry_msgs::Point& position,
+                          const std::vector<geometry_msgs::Point>& footprint,
+                          double inscribed_radius, double circumscribed_radius) override;
+
+      // No need to redeclare lineCost() unless you want to override it
+      // Otherwise it will use the parent class implementation
+
+  private:
+      const costmap_2d::Costmap2D& costmap_;
+  };
+
   class DWAPlanner {
     public:
       /**

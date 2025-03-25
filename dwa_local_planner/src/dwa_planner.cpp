@@ -121,6 +121,13 @@ namespace dwa_local_planner {
 
   }
 
+  // dwa_local_planner::DWACostmapModel::DWACostmapModel(const costmap_2d::Costmap2D& costmap)
+  // : costmap_(costmap), costmap_model_(costmap) {}
+
+  dwa_local_planner::DWACostmapModel::DWACostmapModel(const costmap_2d::Costmap2D& costmap)
+    : base_local_planner::CostmapModel(costmap),
+      costmap_(costmap) {}
+
   DWAPlanner::DWAPlanner(std::string name, base_local_planner::LocalPlannerUtil *planner_util) :
       planner_util_(planner_util),
       obstacle_costs_(planner_util->getCostmap()),
@@ -189,7 +196,7 @@ namespace dwa_local_planner {
     private_nh.param("cheat_factor", cheat_factor_, 1.0);
 
     if (planner_util->getCostmap() != NULL) {
-      world_model_ = new base_local_planner::CostmapModel(*planner_util->getCostmap());
+      world_model_ = new DWACostmapModel(*planner_util->getCostmap());
     }
   }
 
@@ -559,3 +566,74 @@ namespace dwa_local_planner {
     return std::make_pair(result_traj_, outcome);
   }
 };
+
+double dwa_local_planner::DWACostmapModel::footprintCost(const geometry_msgs::Point& position,
+                                                         const std::vector<geometry_msgs::Point>& footprint,
+                                                         double inscribed_radius, double circumscribed_radius)
+{
+      // returns:
+    //  -1 if footprint covers at least a lethal obstacle cell, or
+    //  -2 if footprint covers at least a no-information cell, or
+    //  -3 if footprint is [partially] outside the map, or
+    //  a positive value for traversable space
+    std::cout << "\n\nDWACostmapModel\n\n";
+    //used to put things into grid coordinates
+    unsigned int cell_x, cell_y;
+
+    //get the cell coord of the center point of the robot
+    if(!costmap_.worldToMap(position.x, position.y, cell_x, cell_y))
+      return -3.0;
+
+    //check its cost, so we can skip footprint check if it's already non-traversable space
+    unsigned char cost = costmap_.getCost(cell_x, cell_y);
+    if(cost == costmap_2d::NO_INFORMATION)
+      return -2.0;
+    if(cost == costmap_2d::LETHAL_OBSTACLE || cost == costmap_2d::INSCRIBED_INFLATED_OBSTACLE)
+      return -1.0;
+
+    //if number of points in the footprint is less than 3, we'll just assume a circular robot
+    if(footprint.size() < 3){
+      return cost;
+    }
+
+    //now we really have to lay down the footprint in the costmap grid
+    unsigned int x0, x1, y0, y1;
+    double line_cost = 0.0;
+    double footprint_cost = 0.0;
+
+    //we need to rasterize each line in the footprint
+    for(unsigned int i = 0; i < footprint.size() - 1; ++i){
+      //get the cell coord of the first point
+      if(!costmap_.worldToMap(footprint[i].x, footprint[i].y, x0, y0))
+        return -3.0;
+
+      //get the cell coord of the second point
+      if(!costmap_.worldToMap(footprint[i + 1].x, footprint[i + 1].y, x1, y1))
+        return -3.0;
+
+      line_cost = DWACostmapModel::lineCost(x0, x1, y0, y1);
+      footprint_cost = std::max(line_cost, footprint_cost);
+
+      //if there is an obstacle that hits the line... we know that we can return false right away
+      if(line_cost < 0)
+        return line_cost;
+    }
+
+    //we also need to connect the first point in the footprint to the last point
+    //get the cell coord of the last point
+    if(!costmap_.worldToMap(footprint.back().x, footprint.back().y, x0, y0))
+      return 1.0;
+
+    //get the cell coord of the first point
+    if(!costmap_.worldToMap(footprint.front().x, footprint.front().y, x1, y1))
+      return 1.0;
+
+    line_cost = DWACostmapModel::lineCost(x0, x1, y0, y1);
+    footprint_cost = std::max(line_cost, footprint_cost);
+
+    if(line_cost < 0)
+      return line_cost;
+
+    //if all line costs are legal... then we can return that the footprint is legal
+    return footprint_cost;
+}
