@@ -44,6 +44,8 @@
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/Point32.h>
 
+#include <Eigen/Dense>
+
 namespace costmap_2d
 {
 
@@ -57,15 +59,41 @@ namespace costmap_2d
 void calculateMinAndMaxDistances(const std::vector<geometry_msgs::Point>& footprint,
                                  double& min_dist, double& max_dist);
 
+typedef struct
+{
+  double rot_angle;
+  double area;
+  double width;
+  double height;
+  geometry_msgs::Point center;
+  std::array<geometry_msgs::Point, 4> corners;
+} BoundingRect;
+
+/**
+ * @brief Find the minimum-area bounding box of a footprint
+ * We first find the rotation angles of each edge of the convex polygon, then tests the area
+ * of a bounding box aligned with the unique angles in 90 degrees of the 1st Quadrant.
+ * C++ version of https://github.com/OmarFarag95/minimum-area-bounding-rectangle-python3
+ * @param footprint The footprint to examine
+ * @return strut containing the rotation angle, area, width, height, center and corners of the
+ * minimum-area bounding box
+ */
+BoundingRect minBoundingRect(const std::vector<geometry_msgs::Point>& points);
+
 /**
  * @brief Convert Point32 to Point
  */
 geometry_msgs::Point              toPoint(geometry_msgs::Point32 pt);
 
 /**
+ * @brief Convert Eigen Vector2d to Point
+ */
+geometry_msgs::Point              toPoint(Eigen::Vector2d pt);
+
+/**
  * @brief Convert Point to Point32
  */
-geometry_msgs::Point32            toPoint32(geometry_msgs::Point   pt);
+geometry_msgs::Point32            toPoint32(geometry_msgs::Point pt);
 
 /**
  * @brief Convert vector of Points to Polygon msg
@@ -76,6 +104,11 @@ geometry_msgs::Polygon            toPolygon(std::vector<geometry_msgs::Point> pt
  * @brief Convert Polygon msg to vector of Points.
  */
 std::vector<geometry_msgs::Point> toPointVector(geometry_msgs::Polygon polygon);
+
+/**
+ * @brief Return a list of numbers as a space-separated string.
+ */
+std::string                       toString(const std::vector<double>& numbers);
 
 /**
  * @brief  Given a pose and base footprint, build the oriented footprint of the robot (list of Points)
