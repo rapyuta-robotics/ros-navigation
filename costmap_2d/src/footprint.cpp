@@ -33,7 +33,9 @@
 #include <boost/algorithm/string.hpp>
 #include <costmap_2d/footprint.h>
 #include <costmap_2d/array_parser.h>
-#include<geometry_msgs/Point32.h>
+#include <geometry_msgs/Point32.h>
+#include <cavc/polylineoffset.hpp>
+#include <cavc/polyline.hpp>
 
 namespace costmap_2d
 {
@@ -137,12 +139,31 @@ void transformFootprint(double x, double y, double theta, const std::vector<geom
 
 void padFootprint(std::vector<geometry_msgs::Point>& footprint, double padding)
 {
-  // pad footprint in place
-  for (unsigned int i = 0; i < footprint.size(); i++)
+  if (footprint.size() < 3)
   {
-    geometry_msgs::Point& pt = footprint[ i ];
-    pt.x += sign0(pt.x) * padding;
-    pt.y += sign0(pt.y) * padding;
+    return;
+  }
+
+  cavc::Polyline<double> polyline;
+  polyline.isClosed() = true;
+
+  for (const auto& pt : footprint)
+  {
+    polyline.addVertex(pt.x, pt.y, 0);
+  }
+
+  const auto results = cavc::parallelOffset(polyline, -padding);
+  if (!results.empty())
+  {
+    footprint.clear();
+    for (const auto& vertex : results[0].vertexes())
+    {
+      geometry_msgs::Point p;
+      p.x = vertex.x();
+      p.y = vertex.y();
+      p.z = 0.0;
+      footprint.push_back(p);
+    }
   }
 }
 

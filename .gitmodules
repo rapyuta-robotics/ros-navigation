@@ -1,0 +1,3 @@
+[submodule "costmap_2d/external/CavalierContours"]
+	path = costmap_2d/external/CavalierContours
+	url = https://github.com/jbuckmccready/CavalierContours.git

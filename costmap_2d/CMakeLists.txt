@@ -25,11 +25,17 @@ find_package(catkin REQUIRED
 
 find_package(Eigen3 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system thread)
+
+# CavalierContours (header only)
+set(CAVALIER_CONTOURS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/CavalierContours/include)
+add_definitions(-DCAVC_HEADER_ONLY)
+
 include_directories(
     include
     ${catkin_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIRS}
+    ${CAVALIER_CONTOURS_DIR}
 )
 
 add_definitions(${EIGEN3_DEFINITIONS})
