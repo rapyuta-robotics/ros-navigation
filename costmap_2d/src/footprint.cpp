@@ -34,8 +34,10 @@
 #include <costmap_2d/footprint.h>
 #include <costmap_2d/array_parser.h>
 #include <geometry_msgs/Point32.h>
-#include <cavc/polylineoffset.hpp>
-#include <cavc/polyline.hpp>
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/point_xy.hpp>
+#include <boost/geometry/geometries/polygon.hpp>
+#include <boost/geometry/strategies/buffer.hpp>
 
 namespace costmap_2d
 {
@@ -139,34 +141,65 @@ void transformFootprint(double x, double y, double theta, const std::vector<geom
 
 void padFootprint(std::vector<geometry_msgs::Point>& footprint, double padding)
 {
+  namespace bg = boost::geometry;
+  using BoostPoint = bg::model::d2::point_xy<double>;
+  using BoostPolygon = bg::model::polygon<BoostPoint>;
+
   if (footprint.size() < 3)
   {
+    ROS_WARN_NAMED("costmap_2d", "Footprint has fewer than 3 points. Skipping padding.");
     return;
   }
 
-  cavc::Polyline<double> polyline;
-  polyline.isClosed() = true;
-
+  BoostPolygon input_poly;
   for (const auto& pt : footprint)
   {
-    polyline.addVertex(pt.x, pt.y, 0);
+    bg::append(input_poly.outer(), BoostPoint(pt.x, pt.y));
   }
 
-  const auto results = cavc::parallelOffset(polyline, -padding);
-  if (!results.empty())
+  // ensure closure
+  if (footprint.front().x != footprint.back().x || footprint.front().y != footprint.back().y)
   {
-    footprint.clear();
-    for (const auto& vertex : results[0].vertexes())
-    {
-      geometry_msgs::Point p;
-      p.x = vertex.x();
-      p.y = vertex.y();
-      p.z = 0.0;
-      footprint.push_back(p);
-    }
+    bg::append(input_poly.outer(), BoostPoint(footprint.front().x, footprint.front().y));
+  }
+
+  // correct polygon before validation
+  bg::correct(input_poly);
+
+  std::string reason;
+  if (!bg::is_valid(input_poly, reason))
+  {
+    ROS_WARN_STREAM_NAMED("costmap_2d",
+                          "Input polygon is STILL invalid after correction. Skipping padding. Reason: " << reason);
+    return;
+  }
+
+  std::vector<BoostPolygon> buffered_result;
+  bg::strategy::buffer::distance_symmetric<double> distance_strategy(padding);
+  bg::strategy::buffer::join_miter join_strategy(5.0);  // <-- Sharp edges
+  bg::strategy::buffer::end_flat end_strategy;          // Use flat ends for open polygons
+  bg::strategy::buffer::point_square circle_strategy;   // Square buffer around points
+  bg::strategy::buffer::side_straight side_strategy;
+
+  bg::buffer(input_poly, buffered_result, distance_strategy, side_strategy, join_strategy, end_strategy,
+             circle_strategy);
+
+  if (buffered_result.empty())
+  {
+    ROS_WARN_NAMED("costmap_2d", "Buffer operation produced no results. Skipping padding.");
+    return;
+  }
+
+  footprint.clear();
+  for (const auto& pt : buffered_result.front().outer())
+  {
+    geometry_msgs::Point p;
+    p.x = pt.x();
+    p.y = pt.y();
+    p.z = 0.0;
+    footprint.push_back(p);
   }
 }
-
 
 std::vector<geometry_msgs::Point> makeFootprintFromRadius(double radius)
 {
