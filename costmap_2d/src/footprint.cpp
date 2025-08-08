@@ -190,14 +190,24 @@ void padFootprint(std::vector<geometry_msgs::Point>& footprint, double padding)
     return;
   }
 
+  // simplify to remove collinear points
+  BoostPolygon simplified_poly;
+  bg::simplify(buffered_result.front(), simplified_poly, 1e-6);
+
   footprint.clear();
-  for (const auto& pt : buffered_result.front().outer())
+  for (const auto& pt : simplified_poly.outer())
   {
     geometry_msgs::Point p;
     p.x = pt.x();
     p.y = pt.y();
     p.z = 0.0;
     footprint.push_back(p);
+  }
+
+  // Remove closing point if same as first
+  if (footprint.size() > 1 && footprint.front().x == footprint.back().x && footprint.front().y == footprint.back().y)
+  {
+    footprint.pop_back();
   }
 }
 
