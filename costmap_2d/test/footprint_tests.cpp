@@ -66,21 +66,6 @@ bool pointLess(const geometry_msgs::Point& a, const geometry_msgs::Point& b)
 bool compareFootprint(std::vector<geometry_msgs::Point>& expected_footprint,
                       std::vector<geometry_msgs::Point>& footprint)
 {
-  std::string expected_log;
-  std::string footprint_log;
-  for (const auto& point : expected_footprint)
-  {
-    expected_log +=
-        "Point(" + std::to_string(point.x) + ", " + std::to_string(point.y) + ", " + std::to_string(point.z) + ")\n";
-  }
-  for (const auto& point : footprint)
-  {
-    footprint_log +=
-        "Point(" + std::to_string(point.x) + ", " + std::to_string(point.y) + ", " + std::to_string(point.z) + ")\n";
-  }
-  ROS_ERROR_STREAM("Expected footprint points: \n" << expected_log);
-  ROS_ERROR_STREAM("Actual footprint points: \n" << footprint_log);
-
   if (footprint.size() != expected_footprint.size())
   {
     ROS_ERROR("Footprint size mismatch: expected %zu points, got %zu points.", expected_footprint.size(),
