@@ -43,6 +43,9 @@
 #include <geometry_msgs/PolygonStamped.h>
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/Point32.h>
+#include <boost/geometry/geometries/point_xy.hpp>
+#include <boost/geometry/geometries/polygon.hpp>
+#include <boost/geometry/strategies/buffer.hpp>
 
 namespace costmap_2d
 {
@@ -76,6 +79,16 @@ geometry_msgs::Polygon            toPolygon(std::vector<geometry_msgs::Point> pt
  * @brief Convert Polygon msg to vector of Points.
  */
 std::vector<geometry_msgs::Point> toPointVector(geometry_msgs::Polygon polygon);
+
+/**
+ * @brief Convert std::vector<geometry_msgs::Point> to BoostPolygon.
+ */
+boost::geometry::model::polygon<boost::geometry::model::d2::point_xy<double>> toBoostPolygon(const std::vector<geometry_msgs::Point>& polygon);
+
+/**
+ * @brief Convert BoostPolygon to std::vector<geometry_msgs::Point>
+ */
+std::vector<geometry_msgs::Point> fromBoostPolygon(const boost::geometry::model::polygon<boost::geometry::model::d2::point_xy<double>>& polygon);
 
 /**
  * @brief  Given a pose and base footprint, build the oriented footprint of the robot (list of Points)

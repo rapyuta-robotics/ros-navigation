@@ -139,32 +139,67 @@ void transformFootprint(double x, double y, double theta, const std::vector<geom
   }
 }
 
+boost::geometry::model::polygon<boost::geometry::model::d2::point_xy<double>> toBoostPolygon(const std::vector<geometry_msgs::Point>& polygon)
+{
+  namespace bg = boost::geometry;
+  using BoostPoint = bg::model::d2::point_xy<double>;
+  using BoostPolygon = bg::model::polygon<BoostPoint>;
+
+  if (polygon.size() < 3)
+  {
+    ROS_WARN_NAMED("costmap_2d", "Footprint has fewer than 3 points. Skipping padding.");
+    return BoostPolygon();
+  }
+
+  BoostPolygon boost_poly;
+  for (const auto& pt : polygon)
+  {
+    bg::append(boost_poly.outer(), BoostPoint(pt.x, pt.y));
+  }
+
+  // ensure closure
+  if (polygon.front().x != polygon.back().x || polygon.front().y != polygon.back().y)
+  {
+    bg::append(boost_poly.outer(), BoostPoint(polygon.front().x, polygon.front().y));
+  }
+
+  // correct polygon before validation
+  bg::correct(boost_poly);
+  return boost_poly;
+}
+
+std::vector<geometry_msgs::Point> fromBoostPolygon(const boost::geometry::model::polygon<boost::geometry::model::d2::point_xy<double>>& polygon)
+{
+  std::vector<geometry_msgs::Point> footprint;
+  for (const auto& pt : polygon.outer())
+  {
+    geometry_msgs::Point p;
+    p.x = pt.x();
+    p.y = pt.y();
+    p.z = 0.0;
+    footprint.push_back(p);
+  }
+
+  // Remove closing point if same as first
+  if (footprint.size() > 1 && footprint.front().x == footprint.back().x && footprint.front().y == footprint.back().y)
+  {
+    footprint.pop_back();
+  }
+  return footprint;
+}
+
+
 void padFootprint(std::vector<geometry_msgs::Point>& footprint, double padding)
 {
   namespace bg = boost::geometry;
   using BoostPoint = bg::model::d2::point_xy<double>;
   using BoostPolygon = bg::model::polygon<BoostPoint>;
 
-  if (footprint.size() < 3)
+  const auto input_poly = toBoostPolygon(footprint);
+  if (input_poly.outer().size() < 3)
   {
-    ROS_WARN_NAMED("costmap_2d", "Footprint has fewer than 3 points. Skipping padding.");
     return;
   }
-
-  BoostPolygon input_poly;
-  for (const auto& pt : footprint)
-  {
-    bg::append(input_poly.outer(), BoostPoint(pt.x, pt.y));
-  }
-
-  // ensure closure
-  if (footprint.front().x != footprint.back().x || footprint.front().y != footprint.back().y)
-  {
-    bg::append(input_poly.outer(), BoostPoint(footprint.front().x, footprint.front().y));
-  }
-
-  // correct polygon before validation
-  bg::correct(input_poly);
 
   std::string reason;
   if (!bg::is_valid(input_poly, reason))
@@ -194,21 +229,7 @@ void padFootprint(std::vector<geometry_msgs::Point>& footprint, double padding)
   BoostPolygon simplified_poly;
   bg::simplify(buffered_result.front(), simplified_poly, 1e-6);
 
-  footprint.clear();
-  for (const auto& pt : simplified_poly.outer())
-  {
-    geometry_msgs::Point p;
-    p.x = pt.x();
-    p.y = pt.y();
-    p.z = 0.0;
-    footprint.push_back(p);
-  }
-
-  // Remove closing point if same as first
-  if (footprint.size() > 1 && footprint.front().x == footprint.back().x && footprint.front().y == footprint.back().y)
-  {
-    footprint.pop_back();
-  }
+  footprint = fromBoostPolygon(simplified_poly);
 }
 
 std::vector<geometry_msgs::Point> makeFootprintFromRadius(double radius)
