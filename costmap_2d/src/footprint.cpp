@@ -147,7 +147,7 @@ boost::geometry::model::polygon<boost::geometry::model::d2::point_xy<double>> to
 
   if (polygon.size() < 3)
   {
-    ROS_WARN_NAMED("costmap_2d", "Footprint has fewer than 3 points. Skipping padding.");
+    ROS_WARN_NAMED("costmap_2d", "Footprint has fewer than 3 points. Skipping...");
     return BoostPolygon();
   }
 
