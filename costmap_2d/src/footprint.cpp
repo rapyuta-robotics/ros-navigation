@@ -27,13 +27,17 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include<costmap_2d/costmap_math.h>
+#include <costmap_2d/costmap_math.h>
 #include <boost/tokenizer.hpp>
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
 #include <costmap_2d/footprint.h>
 #include <costmap_2d/array_parser.h>
-#include<geometry_msgs/Point32.h>
+#include <geometry_msgs/Point32.h>
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/point_xy.hpp>
+#include <boost/geometry/geometries/polygon.hpp>
+#include <boost/geometry/strategies/buffer.hpp>
 
 namespace costmap_2d
 {
@@ -135,17 +139,98 @@ void transformFootprint(double x, double y, double theta, const std::vector<geom
   }
 }
 
-void padFootprint(std::vector<geometry_msgs::Point>& footprint, double padding)
+boost::geometry::model::polygon<boost::geometry::model::d2::point_xy<double>> toBoostPolygon(const std::vector<geometry_msgs::Point>& polygon)
 {
-  // pad footprint in place
-  for (unsigned int i = 0; i < footprint.size(); i++)
+  namespace bg = boost::geometry;
+  using BoostPoint = bg::model::d2::point_xy<double>;
+  using BoostPolygon = bg::model::polygon<BoostPoint>;
+
+  if (polygon.size() < 3)
   {
-    geometry_msgs::Point& pt = footprint[ i ];
-    pt.x += sign0(pt.x) * padding;
-    pt.y += sign0(pt.y) * padding;
+    ROS_WARN_NAMED("costmap_2d", "Footprint has fewer than 3 points. Skipping...");
+    return BoostPolygon();
   }
+
+  BoostPolygon boost_poly;
+  for (const auto& pt : polygon)
+  {
+    bg::append(boost_poly.outer(), BoostPoint(pt.x, pt.y));
+  }
+
+  // ensure closure
+  if (polygon.front().x != polygon.back().x || polygon.front().y != polygon.back().y)
+  {
+    bg::append(boost_poly.outer(), BoostPoint(polygon.front().x, polygon.front().y));
+  }
+
+  // correct polygon before validation
+  bg::correct(boost_poly);
+  return boost_poly;
 }
 
+std::vector<geometry_msgs::Point> fromBoostPolygon(const boost::geometry::model::polygon<boost::geometry::model::d2::point_xy<double>>& polygon)
+{
+  std::vector<geometry_msgs::Point> footprint;
+  for (const auto& pt : polygon.outer())
+  {
+    geometry_msgs::Point p;
+    p.x = pt.x();
+    p.y = pt.y();
+    p.z = 0.0;
+    footprint.push_back(p);
+  }
+
+  // Remove closing point if same as first
+  if (footprint.size() > 1 && footprint.front().x == footprint.back().x && footprint.front().y == footprint.back().y)
+  {
+    footprint.pop_back();
+  }
+  return footprint;
+}
+
+
+void padFootprint(std::vector<geometry_msgs::Point>& footprint, double padding)
+{
+  namespace bg = boost::geometry;
+  using BoostPoint = bg::model::d2::point_xy<double>;
+  using BoostPolygon = bg::model::polygon<BoostPoint>;
+
+  const auto input_poly = toBoostPolygon(footprint);
+  if (input_poly.outer().size() < 3)
+  {
+    return;
+  }
+
+  std::string reason;
+  if (!bg::is_valid(input_poly, reason))
+  {
+    ROS_WARN_STREAM_NAMED("costmap_2d",
+                          "Input polygon is STILL invalid after correction. Skipping padding. Reason: " << reason);
+    return;
+  }
+
+  std::vector<BoostPolygon> buffered_result;
+  bg::strategy::buffer::distance_symmetric<double> distance_strategy(padding);
+  bg::strategy::buffer::join_miter join_strategy(5.0);  // <-- Sharp edges
+  bg::strategy::buffer::end_flat end_strategy;          // Use flat ends for open polygons
+  bg::strategy::buffer::point_square circle_strategy;   // Square buffer around points
+  bg::strategy::buffer::side_straight side_strategy;
+
+  bg::buffer(input_poly, buffered_result, distance_strategy, side_strategy, join_strategy, end_strategy,
+             circle_strategy);
+
+  if (buffered_result.empty())
+  {
+    ROS_WARN_NAMED("costmap_2d", "Buffer operation produced no results. Skipping padding.");
+    return;
+  }
+
+  // simplify to remove collinear points
+  BoostPolygon simplified_poly;
+  bg::simplify(buffered_result.front(), simplified_poly, 1e-6);
+
+  footprint = fromBoostPolygon(simplified_poly);
+}
 
 std::vector<geometry_msgs::Point> makeFootprintFromRadius(double radius)
 {

@@ -45,126 +45,155 @@ using namespace costmap_2d;
 tf2_ros::TransformListener* tfl_;
 tf2_ros::Buffer* tf_;
 
-TEST( Costmap2DROS, unpadded_footprint_from_string_param )
+bool pointEqual(const geometry_msgs::Point& a, const geometry_msgs::Point& b, double eps = 1e-6)
 {
-  Costmap2DROS cm( "unpadded/string", *tf_ );
-  std::vector<geometry_msgs::Point> footprint = cm.getRobotFootprint();
-  EXPECT_EQ( 3, footprint.size() );
-
-  EXPECT_EQ( 1.0f, footprint[ 0 ].x );
-  EXPECT_EQ( 1.0f, footprint[ 0 ].y );
-  EXPECT_EQ( 0.0f, footprint[ 0 ].z );
-
-  EXPECT_EQ( -1.0f, footprint[ 1 ].x );
-  EXPECT_EQ( 1.0f, footprint[ 1 ].y );
-  EXPECT_EQ( 0.0f, footprint[ 1 ].z );
-
-  EXPECT_EQ( -1.0f, footprint[ 2 ].x );
-  EXPECT_EQ( -1.0f, footprint[ 2 ].y );
-  EXPECT_EQ( 0.0f, footprint[ 2 ].z );
+  return std::fabs(a.x - b.x) < eps && std::fabs(a.y - b.y) < eps && std::fabs(a.z - b.z) < eps;
 }
 
-TEST( Costmap2DROS, padded_footprint_from_string_param )
+bool pointLess(const geometry_msgs::Point& a, const geometry_msgs::Point& b)
 {
-  Costmap2DROS cm( "padded/string", *tf_ );
-  std::vector<geometry_msgs::Point> footprint = cm.getRobotFootprint();
-  EXPECT_EQ( 3, footprint.size() );
-
-  EXPECT_EQ( 1.5f, footprint[ 0 ].x );
-  EXPECT_EQ( 1.5f, footprint[ 0 ].y );
-  EXPECT_EQ( 0.0f, footprint[ 0 ].z );
-
-  EXPECT_EQ( -1.5f, footprint[ 1 ].x );
-  EXPECT_EQ( 1.5f, footprint[ 1 ].y );
-  EXPECT_EQ( 0.0f, footprint[ 1 ].z );
-
-  EXPECT_EQ( -1.5f, footprint[ 2 ].x );
-  EXPECT_EQ( -1.5f, footprint[ 2 ].y );
-  EXPECT_EQ( 0.0f, footprint[ 2 ].z );
+  if (a.x != b.x)
+  {
+    return a.x < b.x;
+  }
+  if (a.y != b.y)
+  {
+    return a.y < b.y;
+  }
+  return a.z < b.z;
 }
 
-TEST( Costmap2DROS, radius_param )
+bool compareFootprint(std::vector<geometry_msgs::Point>& expected_footprint,
+                      std::vector<geometry_msgs::Point>& footprint)
 {
-  Costmap2DROS cm( "radius/sub", *tf_ );
+  if (footprint.size() != expected_footprint.size())
+  {
+    ROS_ERROR("Footprint size mismatch: expected %zu points, got %zu points.", expected_footprint.size(),
+              footprint.size());
+    return false;
+  }
+
+  std::sort(footprint.begin(), footprint.end(), pointLess);
+  std::sort(expected_footprint.begin(), expected_footprint.end(), pointLess);
+
+  for (size_t i = 0; i < footprint.size(); ++i)
+  {
+    if (!pointEqual(footprint[i], expected_footprint[i]))
+    {
+      ROS_ERROR("Footprint point mismatch at index %zu: expected (%f, %f, %f), got (%f, %f, %f).", i,
+                expected_footprint[i].x, expected_footprint[i].y, expected_footprint[i].z, footprint[i].x,
+                footprint[i].y, footprint[i].z);
+      return false;
+    }
+  }
+  return true;
+}
+
+geometry_msgs::Point createPoint(double x, double y, double z = 0.0)
+{
+  geometry_msgs::Point point;
+  point.x = x;
+  point.y = y;
+  point.z = z;
+  return point;
+}
+
+TEST(Costmap2DROS, unpadded_footprint_from_string_param)
+{
+  Costmap2DROS cm("unpadded/string", *tf_);
+  std::vector<geometry_msgs::Point> footprint = cm.getRobotFootprint();
+  std::vector<geometry_msgs::Point> expected_footprint = {
+    createPoint(1.0, 1.0, 0.0),
+    createPoint(-1.0, -1.0, 0.0),
+    createPoint(-1.0, 1.0, 0.0),
+  };
+  EXPECT_TRUE(compareFootprint(expected_footprint, footprint));
+}
+
+TEST(Costmap2DROS, padded_footprint_from_string_param)
+{
+  Costmap2DROS cm("padded/string", *tf_);
+  std::vector<geometry_msgs::Point> footprint = cm.getRobotFootprint();
+  std::vector<geometry_msgs::Point> expected_footprint = {
+    createPoint(2.207107, 1.5, 0.0),
+    createPoint(-1.5, 1.5, 0.0),
+    createPoint(-1.5, -2.207107, 0.0),
+  };
+  EXPECT_TRUE(compareFootprint(expected_footprint, footprint));
+}
+
+TEST(Costmap2DROS, radius_param)
+{
+  Costmap2DROS cm("radius/sub", *tf_);
   std::vector<geometry_msgs::Point> footprint = cm.getRobotFootprint();
   // Circular robot has 16-point footprint auto-generated.
-  EXPECT_EQ( 16, footprint.size() );
+  EXPECT_EQ(16, footprint.size());
 
   // Check the first point
-  EXPECT_EQ( 10.0f, footprint[ 0 ].x );
-  EXPECT_EQ( 0.0f, footprint[ 0 ].y );
-  EXPECT_EQ( 0.0f, footprint[ 0 ].z );
+  EXPECT_NEAR(-10.0f, footprint[0].x, 0.0001);
+  EXPECT_NEAR(0.0f, footprint[0].y, 0.0001);
+  EXPECT_EQ(0.0f, footprint[0].z);
 
   // Check the 4th point, which should be 90 degrees around the circle from the first.
-  EXPECT_NEAR( 0.0f, footprint[ 4 ].x, 0.0001 );
-  EXPECT_NEAR( 10.0f, footprint[ 4 ].y, 0.0001 );
-  EXPECT_EQ( 0.0f, footprint[ 4 ].z );
+  EXPECT_NEAR(0.0f, footprint[4].x, 0.0001);
+  EXPECT_NEAR(10.0f, footprint[4].y, 0.0001);
+  EXPECT_EQ(0.0f, footprint[4].z);
 }
 
-TEST( Costmap2DROS, footprint_from_xmlrpc_param )
+TEST(Costmap2DROS, footprint_from_xmlrpc_param)
 {
-  Costmap2DROS cm( "xmlrpc", *tf_ );
+  Costmap2DROS cm("xmlrpc", *tf_);
   std::vector<geometry_msgs::Point> footprint = cm.getRobotFootprint();
-  EXPECT_EQ( 4, footprint.size() );
-
-  EXPECT_EQ( 0.1f, footprint[ 0 ].x );
-  EXPECT_EQ( 0.1f, footprint[ 0 ].y );
-  EXPECT_EQ( 0.0f, footprint[ 0 ].z );
-
-  EXPECT_EQ( -0.1f, footprint[ 1 ].x );
-  EXPECT_EQ( 0.1f, footprint[ 1 ].y );
-  EXPECT_EQ( 0.0f, footprint[ 1 ].z );
-
-  EXPECT_EQ( -0.1f, footprint[ 2 ].x );
-  EXPECT_EQ( -0.1f, footprint[ 2 ].y );
-  EXPECT_EQ( 0.0f, footprint[ 2 ].z );
-
-  EXPECT_EQ( 0.1f, footprint[ 3 ].x );
-  EXPECT_EQ( -0.1f, footprint[ 3 ].y );
-  EXPECT_EQ( 0.0f, footprint[ 3 ].z );
+  std::vector<geometry_msgs::Point> expected_footprint = {
+    createPoint(0.1, 0.1, 0.0),
+    createPoint(-0.1, 0.1, 0.0),
+    createPoint(-0.1, -0.1, 0.0),
+    createPoint(0.1, -0.1, 0.0),
+  };
+  EXPECT_TRUE(compareFootprint(expected_footprint, footprint));
 }
 
-TEST( Costmap2DROS, footprint_from_same_level_param )
+TEST(Costmap2DROS, footprint_from_same_level_param)
 {
-  Costmap2DROS cm( "same_level", *tf_ );
+  Costmap2DROS cm("same_level", *tf_);
   std::vector<geometry_msgs::Point> footprint = cm.getRobotFootprint();
-  EXPECT_EQ( 3, footprint.size() );
+  EXPECT_EQ(3, footprint.size());
 
-  EXPECT_EQ( 1.0f, footprint[ 0 ].x );
-  EXPECT_EQ( 2.0f, footprint[ 0 ].y );
-  EXPECT_EQ( 0.0f, footprint[ 0 ].z );
+  EXPECT_EQ(1.0f, footprint[0].x);
+  EXPECT_EQ(2.0f, footprint[0].y);
+  EXPECT_EQ(0.0f, footprint[0].z);
 
-  EXPECT_EQ( 3.0f, footprint[ 1 ].x );
-  EXPECT_EQ( 4.0f, footprint[ 1 ].y );
-  EXPECT_EQ( 0.0f, footprint[ 1 ].z );
+  EXPECT_EQ(3.0f, footprint[1].x);
+  EXPECT_EQ(4.0f, footprint[1].y);
+  EXPECT_EQ(0.0f, footprint[1].z);
 
-  EXPECT_EQ( 5.0f, footprint[ 2 ].x );
-  EXPECT_EQ( 6.0f, footprint[ 2 ].y );
-  EXPECT_EQ( 0.0f, footprint[ 2 ].z );
+  EXPECT_EQ(5.0f, footprint[2].x);
+  EXPECT_EQ(6.0f, footprint[2].y);
+  EXPECT_EQ(0.0f, footprint[2].z);
 }
 
-TEST( Costmap2DROS, footprint_from_xmlrpc_param_failure )
+TEST(Costmap2DROS, footprint_from_xmlrpc_param_failure)
 {
-  ASSERT_ANY_THROW( Costmap2DROS cm( "xmlrpc_fail", *tf_ ));
+  ASSERT_ANY_THROW(Costmap2DROS cm("xmlrpc_fail", *tf_));
 }
 
-TEST( Costmap2DROS, footprint_empty )
+TEST(Costmap2DROS, footprint_empty)
 {
-  Costmap2DROS cm( "empty", *tf_ );
+  Costmap2DROS cm("empty", *tf_);
   std::vector<geometry_msgs::Point> footprint = cm.getRobotFootprint();
   // With no specification of footprint or radius, defaults to 0.46 meter radius plus 0.01 meter padding.
-  EXPECT_EQ( 16, footprint.size() );
+  EXPECT_EQ(16, footprint.size());
 
-  EXPECT_NEAR( 0.47f, footprint[ 0 ].x, 0.0001 );
-  EXPECT_NEAR( 0.0f, footprint[ 0 ].y, 0.0001 );
-  EXPECT_EQ( 0.0f, footprint[ 0 ].z );
+  EXPECT_NEAR(-0.470196f, footprint[0].x, 0.0001);
+  EXPECT_NEAR(0.0f, footprint[0].y, 0.0001);
+  EXPECT_EQ(0.0f, footprint[0].z);
 }
 
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "footprint_tests_node");
 
-  tf_ = new tf2_ros::Buffer( ros::Duration( 10 ));
+  tf_ = new tf2_ros::Buffer(ros::Duration(10));
   tfl_ = new tf2_ros::TransformListener(*tf_);
 
   // This empty transform is added to satisfy the constructor of
@@ -175,7 +204,7 @@ int main(int argc, char** argv)
   base_rel_map.child_frame_id = "base_link";
   base_rel_map.header.frame_id = "map";
   base_rel_map.header.stamp = ros::Time::now();
-  tf_->setTransform( base_rel_map, "footprint_tests" );
+  tf_->setTransform(base_rel_map, "footprint_tests");
 
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
