@@ -35,6 +35,8 @@
  * Author: Eitan Marder-Eppstein
  *         David V. Lu!!
  *********************************************************************/
+#include "costmap_2d/cost_values.h"
+#include "visualization_msgs/Marker.h"
 #include <costmap_2d/obstacle_layer.h>
 #include <costmap_2d/costmap_math.h>
 #include <tf2_ros/message_filter.h>
@@ -58,6 +60,7 @@ void ObstacleLayer::onInitialize()
 {
   ros::NodeHandle nh("~/" + name_), g_nh;
   rolling_window_ = layered_costmap_->isRolling();
+  marked_cells_pub_ = nh.advertise<visualization_msgs::Marker>("marked_cells", 1);
 
   bool track_unknown_space;
   nh.param("track_unknown_space", track_unknown_space, layered_costmap_->isTrackingUnknown());
@@ -70,6 +73,19 @@ void ObstacleLayer::onInitialize()
   current_ = true;
 
   global_frame_ = layered_costmap_->getGlobalFrameID();
+
+  marked_cells_marker_.header.frame_id = global_frame_;
+  marked_cells_marker_.ns = "raytraced_cells";
+  marked_cells_marker_.id = 0;
+  marked_cells_marker_.type = visualization_msgs::Marker::CUBE_LIST;
+  marked_cells_marker_.action = visualization_msgs::Marker::ADD;
+  marked_cells_marker_.scale.x = resolution_;
+  marked_cells_marker_.scale.y = resolution_;
+  marked_cells_marker_.scale.z = 0.1;  // Small height
+  marked_cells_marker_.color.r = 0.0;
+  marked_cells_marker_.color.g = 1.0;
+  marked_cells_marker_.color.b = 0.0;
+  marked_cells_marker_.color.a = 0.6;
   double transform_tolerance;
   nh.param("transform_tolerance", transform_tolerance, 0.2);
 
@@ -527,6 +543,9 @@ bool ObstacleLayer::getClearingObservations(std::vector<Observation>& clearing_o
 void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, double* min_x, double* min_y,
                                               double* max_x, double* max_y)
 {
+  marked_cells_marker_.points.clear();
+  marked_cells_marker_.header.stamp = ros::Time::now();
+
   const sensor_msgs::PointCloud2 &cloud = *(clearing_observation.cloud_);
 
   // get the map coordinates of the origin of the sensor
@@ -565,7 +584,7 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
     {
       continue;
     }
-    
+
     // now we also need to make sure that the enpoint we're raytracing
     // to isn't off the costmap and scale if necessary
     double a = wx - ox;
@@ -611,6 +630,17 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
     const auto action = [&](unsigned int offset)
     {
       marker(offset);
+      unsigned int mx, my;
+      indexToCells(offset, mx, my);
+      double wx, wy;
+      mapToWorld(mx, my, wx, wy);
+
+      geometry_msgs::Point point;
+      point.x = wx;
+      point.y = wy;
+
+      marked_cells_marker_.points.push_back(point);
+
       updateCellTimeout(offset);
     };
 
@@ -618,6 +648,10 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, d
     raytraceLine(action, x0, y0, x1, y1, cell_raytrace_range);
 
     updateRaytraceBounds(ox, oy, wx, wy, clearing_observation.raytrace_range_, min_x, min_y, max_x, max_y);
+
+    if (!marked_cells_marker_.points.empty()) {
+      marked_cells_pub_.publish(marked_cells_marker_);
+    }
   }
 }
 

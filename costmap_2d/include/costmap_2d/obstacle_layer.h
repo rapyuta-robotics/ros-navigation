@@ -62,6 +62,7 @@
 #include <boost/geometry/geometries/point_xy.hpp>
 #include <boost/geometry/geometries/linestring.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
+#include <visualization_msgs/Marker.h>
 
 namespace costmap_2d
 {
@@ -74,12 +75,15 @@ private:
   typedef bg::model::d2::point_xy<double> Point;
   typedef bg::model::polygon<Point, false, false> Polygon;
   typedef bg::model::linestring<Point> Linestring;
+  ros::Publisher marked_cells_pub_;
+  visualization_msgs::Marker marked_cells_marker_;
+
+
 public:
   ObstacleLayer()
   {
     costmap_ = NULL;  // this is the unsigned char* member of parent class Costmap2D.
   }
-
   virtual ~ObstacleLayer();
   virtual void onInitialize();
   virtual void updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
@@ -180,7 +184,7 @@ protected:
                             double* max_x, double* max_y);
 
   void updateMapPolygon();
-  
+
   /**
     * @brief  Update the cell timeout for a given index. Cells with a timeout are marked as NO_INFORMATION
     * @param index The index of the cell to update
