@@ -86,6 +86,9 @@ namespace dwa_local_planner {
 
     twirling_costs_.setScale(config.twirling_scale);
 
+    ROS_ERROR_STREAM("magnitude_cost_scale_   " << config.velocity_scale);
+    magnitude_costs_.setScale(config.velocity_scale);
+
     backwardvel_scale_ = 1.2 * config.sim_time * (config.path_distance_bias + config.goal_distance_bias);
     prefer_forward_costs_.setScale(backwardvel_scale_);
 
@@ -171,7 +174,7 @@ namespace dwa_local_planner {
     // (any function returning negative values will abort scoring, so the order can improve performance)
     std::vector<base_local_planner::TrajectoryCostFunction*> critics;
     critics.push_back(&path_align_costs_);
-    critics.push_back(&oscillation_costs_); // discards oscillating motions (assisgns cost -1)
+    critics.push_back(&oscillation_costs_); // discards oscillating motions (assigns cost -1)
     critics.push_back(&obstacle_costs_); // discards trajectories that move into obstacles
     critics.push_back(&goal_front_costs_); // prefers trajectories that make the nose go towards (local) nose goal
     critics.push_back(&alignment_costs_); // prefers trajectories that keep the robot nose on nose path
@@ -179,6 +182,7 @@ namespace dwa_local_planner {
     critics.push_back(&goal_costs_); // prefers trajectories that go towards (local) goal, based on wave propagation
     critics.push_back(&prefer_forward_costs_); // prefer trajectories that don't go backwards
     critics.push_back(&twirling_costs_); // optionally prefer trajectories that don't spin
+    critics.push_back(&magnitude_costs_); // optionally prefer trajectories with a higher linear velocity
 
     // trajectory generators
     std::vector<base_local_planner::TrajectorySampleGenerator*> generator_list;
