@@ -53,6 +53,7 @@ public:
   double max_vel_theta;
   double max_vel_theta_spin;
   double min_vel_theta;
+  double min_vel_theta_spin;
   double acc_lim_x;
   double acc_lim_y;
   double acc_lim_theta;
@@ -80,6 +81,7 @@ public:
       double nmax_vel_theta,
       double nmax_vel_theta_spin,
       double nmin_vel_theta,
+      double nmin_vel_theta_spin,
       double nacc_lim_x,
       double nacc_lim_y,
       double nacc_lim_theta,
@@ -102,6 +104,7 @@ public:
         max_vel_theta(nmax_vel_theta),
         max_vel_theta_spin(nmax_vel_theta_spin),
         min_vel_theta(nmin_vel_theta),
+        min_vel_theta_spin(nmin_vel_theta_spin),
         acc_lim_x(nacc_lim_x),
         acc_lim_y(nacc_lim_y),
         acc_lim_theta(nacc_lim_theta),

@@ -208,8 +208,10 @@ bool SimpleTrajectoryGenerator::generateTrajectory(
 
   // make sure that the robot would at least be moving with one of
   // the required minimum velocities for translation and rotation (if set)
+  bool is_spin = vmag < 2.0 * limits_->min_vel_trans;
+  double eff_min_vel_theta = is_spin ? limits_->min_vel_theta_spin : limits_->min_vel_theta;
   if ((limits_->min_vel_trans >= 0 && vmag + eps < limits_->min_vel_trans) &&
-      (limits_->min_vel_theta >= 0 && fabs(sample_target_vel[2]) + eps < limits_->min_vel_theta)) {
+      (eff_min_vel_theta >= 0 && fabs(sample_target_vel[2]) + eps < eff_min_vel_theta)) {
     return false;
   }
   // make sure we do not exceed max diagonal (x+y) translational velocity (if set)
