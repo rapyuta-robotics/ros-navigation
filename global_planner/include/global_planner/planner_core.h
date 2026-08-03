@@ -199,6 +199,17 @@ class GlobalPlanner : public mbf_costmap_core::CostmapPlanner {
         void clearRobotCell(const geometry_msgs::PoseStamped& global_pose, unsigned int mx, unsigned int my);
         void publishPotential(float* potential);
 
+        /**
+         * @brief Snap traceback poses that drifted into blocked cells back to a traversable neighbor
+         * @param plan The plan to repair in place
+         * @param goal The (possibly tolerance-displaced) goal pose of the plan
+         * @param tolerance Poses within this distance of the goal are exempt (covered by the goal checks)
+         * @param message Filled with the failure reason when the plan cannot be repaired
+         * @return False if a pose lies in a blocked cell with no traversable expanded neighbor
+         */
+        bool repairPlanCollisions(std::vector<geometry_msgs::PoseStamped>& plan, const geometry_msgs::PoseStamped& goal,
+                                  double tolerance, std::string& message);
+
         double planner_window_x_, planner_window_y_, default_tolerance_;
         boost::mutex mutex_;
         ros::ServiceServer make_plan_srv_;
@@ -224,6 +235,7 @@ class GlobalPlanner : public mbf_costmap_core::CostmapPlanner {
 
         bool old_navfn_behavior_;
         float convert_offset_;
+        unsigned char lethal_cost_ = 253;
 
         bool outline_map_;
 
