@@ -165,6 +165,7 @@ void GlobalPlanner::initialize(std::string name, costmap_2d::Costmap2D* costmap,
 }
 
 void GlobalPlanner::reconfigureCB(global_planner::GlobalPlannerConfig& config, uint32_t level) {
+    lethal_cost_ = config.lethal_cost;
     planner_->setLethalCost(config.lethal_cost);
     path_maker_->setLethalCost(config.lethal_cost);
     planner_->setNeutralCost(config.neutral_cost);
@@ -383,6 +384,10 @@ uint32_t GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const 
             //make sure the goal we push on has the same timestamp as the rest of the plan
             best_pose.header.stamp = ros::Time::now();
             plan.push_back(best_pose);
+            if (!repairPlanCollisions(plan, best_pose, tolerance, message)) {
+                ROS_ERROR_STREAM(message);
+                plan.clear();
+            }
         } else {
             message = "Failed to get a plan from potential when a legal potential was found. This shouldn't happen";
             ROS_ERROR_STREAM(message);
@@ -421,6 +426,73 @@ void GlobalPlanner::publishPlan(const std::vector<geometry_msgs::PoseStamped>& p
     }
 
     plan_pub_.publish(gui_path);
+}
+
+bool GlobalPlanner::repairPlanCollisions(std::vector<geometry_msgs::PoseStamped>& plan,
+                                         const geometry_msgs::PoseStamped& goal, double tolerance,
+                                         std::string& message) {
+    auto blocked = [this](unsigned int mx, unsigned int my) {
+        unsigned char cost = costmap_->getCost(mx, my);
+        if (cost == costmap_2d::NO_INFORMATION)
+            return !allow_unknown_;
+        return cost >= lethal_cost_;
+    };
+
+    const unsigned int nx = costmap_->getSizeInCellsX(), ny = costmap_->getSizeInCellsY();
+    std::vector<geometry_msgs::PoseStamped> repaired;
+    repaired.reserve(plan.size());
+    int snapped_count = 0;
+
+    for (size_t i = 0; i < plan.size(); ++i) {
+        geometry_msgs::PoseStamped pose = plan[i];
+        // the start pose and the goal region are already validated by the BLOCKED_START/BLOCKED_GOAL checks
+        bool exempt = i == 0 || sq_distance(pose, goal) <= tolerance;
+        unsigned int mx, my;
+        bool in_map = costmap_->worldToMap(pose.pose.position.x, pose.pose.position.y, mx, my);
+        if (!exempt && (!in_map || blocked(mx, my))) {
+            // gradient interpolation can drift into a blocked cell bordering the expanded corridor;
+            // snap the pose back to the closest traversable neighbor the wavefront actually reached
+            bool snapped = false;
+            double best_dist = 0.0;
+            if (in_map) {
+                for (int dy = -1; dy <= 1; ++dy) {
+                    for (int dx = -1; dx <= 1; ++dx) {
+                        if (dx == 0 && dy == 0)
+                            continue;
+                        int nmx = static_cast<int>(mx) + dx, nmy = static_cast<int>(my) + dy;
+                        if (nmx < 0 || nmy < 0 || nmx >= static_cast<int>(nx) || nmy >= static_cast<int>(ny))
+                            continue;
+                        if (blocked(nmx, nmy) || potential_array_[nmy * nx + nmx] >= POT_HIGH)
+                            continue;
+                        double wx, wy;
+                        mapToWorld(nmx, nmy, wx, wy);
+                        double dist = std::hypot(wx - plan[i].pose.position.x, wy - plan[i].pose.position.y);
+                        if (!snapped || dist < best_dist) {
+                            best_dist = dist;
+                            pose.pose.position.x = wx;
+                            pose.pose.position.y = wy;
+                            snapped = true;
+                        }
+                    }
+                }
+            }
+            if (!snapped) {
+                message = "The planned path crosses a blocked cell that cannot be repaired; rejecting the plan";
+                return false;
+            }
+            ++snapped_count;
+        }
+        // snapping consecutive poses to the same cell center produces duplicates; drop them
+        if (!repaired.empty() && pose.pose.position.x == repaired.back().pose.position.x
+                && pose.pose.position.y == repaired.back().pose.position.y)
+            continue;
+        repaired.push_back(pose);
+    }
+
+    if (snapped_count > 0)
+        ROS_DEBUG("Snapped %d plan pose(s) out of blocked cells", snapped_count);
+    plan.swap(repaired);
+    return true;
 }
 
 bool GlobalPlanner::getPlanFromPotential(double start_x, double start_y, double goal_x, double goal_y,
