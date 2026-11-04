@@ -39,6 +39,7 @@
 #include <algorithm>
 #include <stdio.h>
 #include <global_planner/planner_core.h>
+#include <rclcpp/logging.hpp>
 
 namespace global_planner {
 
@@ -105,7 +106,7 @@ bool GradientPath::getPath(float* potential, double start_x, double start_y, dou
         int npath = path.size();
         if (npath > 2 && path[npath - 1].first == path[npath - 3].first
                 && path[npath - 1].second == path[npath - 3].second) {
-            ROS_DEBUG("[PathCalc] oscillation detected, attempting fix.");
+            RCLCPP_DEBUG(rclcpp::get_logger("global_planner"), "[PathCalc] oscillation detected, attempting fix.");
             oscillation_detected = true;
         }
 
@@ -117,7 +118,7 @@ bool GradientPath::getPath(float* potential, double start_x, double start_y, dou
                 || potential[stcnx] >= POT_HIGH || potential[stcnx + 1] >= POT_HIGH || potential[stcnx - 1] >= POT_HIGH
                 || potential[stcpx] >= POT_HIGH || potential[stcpx + 1] >= POT_HIGH || potential[stcpx - 1] >= POT_HIGH
                 || oscillation_detected) {
-            ROS_DEBUG("[Path] Pot fn boundary, following grid (%0.1f/%d)", potential[stc], (int) path.size());
+            RCLCPP_DEBUG(rclcpp::get_logger("global_planner"), "[Path] Pot fn boundary, following grid (%0.1f/%d)", potential[stc], (int) path.size());
             // check eight neighbors to find the lowest
             int minc = stc;
             int minp = potential[stc];
@@ -169,7 +170,7 @@ bool GradientPath::getPath(float* potential, double start_x, double start_y, dou
             //    potential[stc], path[npath-1].first, path[npath-1].second);
 
             if (potential[stc] >= POT_HIGH) {
-                ROS_DEBUG("[PathCalc] No path found, high potential");
+                RCLCPP_DEBUG(rclcpp::get_logger("global_planner"), "[PathCalc] No path found, high potential");
                 //savemap("navfn_highpot");
                 return 0;
             }
@@ -193,12 +194,12 @@ bool GradientPath::getPath(float* potential, double start_x, double start_y, dou
             float y = (1.0 - dy) * y1 + dy * y2; // interpolated y
 
             // show gradients
-            ROS_DEBUG(
+            RCLCPP_DEBUG(rclcpp::get_logger("global_planner"),
                     "[Path] %0.2f,%0.2f  %0.2f,%0.2f  %0.2f,%0.2f  %0.2f,%0.2f; final x=%.3f, y=%.3f\n", gradx_[stc], grady_[stc], gradx_[stc+1], grady_[stc+1], gradx_[stcnx], grady_[stcnx], gradx_[stcnx+1], grady_[stcnx+1], x, y);
 
             // check for zero gradient, failed
             if (x == 0.0 && y == 0.0) {
-                ROS_DEBUG("[PathCalc] Zero gradient");
+                RCLCPP_DEBUG(rclcpp::get_logger("global_planner"), "[PathCalc] Zero gradient");
                 return 0;
             }
 
@@ -252,7 +253,7 @@ bool GradientPath::getPath(float* potential, double start_x, double start_y, dou
  }
 
  //  return npath;            // out of cycles, return failure
- ROS_DEBUG("[PathCalc] No path found, path too long");
+ RCLCPP_DEBUG(rclcpp::get_logger("global_planner"), "[PathCalc] No path found, path too long");
  //savemap("navfn_pathlong");
  return 0;            // out of cycles, return failure
  }

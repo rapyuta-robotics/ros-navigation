@@ -36,7 +36,8 @@
  *********************************************************************/
 #ifndef GLOBAL_PLANNER_ORIENTATION_FILTER_H
 #define GLOBAL_PLANNER_ORIENTATION_FILTER_H
-#include <nav_msgs/Path.h>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <vector>
 
 namespace global_planner {
 
@@ -47,11 +48,11 @@ class OrientationFilter {
         OrientationFilter() : omode_(NONE) {}
     
     
-        virtual void processPath(const geometry_msgs::PoseStamped& start,
-                                 std::vector<geometry_msgs::PoseStamped>& path);
+        virtual void processPath(const geometry_msgs::msg::PoseStamped& start,
+                                 std::vector<geometry_msgs::msg::PoseStamped>& path);
                                  
-        void setAngleBasedOnPositionDerivative(std::vector<geometry_msgs::PoseStamped>& path, int index);
-        void interpolate(std::vector<geometry_msgs::PoseStamped>& path, 
+        void setAngleBasedOnPositionDerivative(std::vector<geometry_msgs::msg::PoseStamped>& path, int index);
+        void interpolate(std::vector<geometry_msgs::msg::PoseStamped>& path, 
                          int start_index, int end_index);
                          
         void setMode(OrientationMode new_mode){ omode_ = new_mode; }

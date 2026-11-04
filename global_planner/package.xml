@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
-<?xml-model href="http://download.ros.org/schema/package_format2.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
-<package format="2">
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
   <name>global_planner</name>
   <version>1.17.1</version>
   <description>
-     A path planner library and node.
+     A path planner library and Nav2 global planner plugin.
   </description>
   <maintainer email="davidvlu@gmail.com">David V. Lu!!</maintainer>
   <maintainer email="mfergs7@gmail.com">Michael Ferguson</maintainer>
@@ -14,25 +14,29 @@
   <author>David Lu!!</author>
   <url>http://wiki.ros.org/global_planner</url>
 
-  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <build_depend>angles</build_depend>
-  <build_depend>tf2_geometry_msgs</build_depend>
-
-  <depend>costmap_2d</depend>
-  <depend>dynamic_reconfigure</depend>
+  <depend>angles</depend>
   <depend>geometry_msgs</depend>
-  <depend>mbf_costmap_core</depend>
-  <depend>mbf_msgs</depend>
+  <depend>nav2_core</depend>
+  <depend>nav2_costmap_2d</depend>
+  <depend>nav2_ros_common</depend>
+  <depend>nav2_util</depend>
   <depend>nav_msgs</depend>
-  <depend>navfn</depend>
   <depend>pluginlib</depend>
-  <depend>roscpp</depend>
-  <depend>tf2_ros</depend>
+  <depend>rcl_interfaces</depend>
+  <depend>rclcpp</depend>
+  <depend>rr_nav_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_geometry_msgs</depend>
   <depend>visualization_msgs</depend>
 
+  <test_depend>ament_cmake_gtest</test_depend>
+  <test_depend>ament_cmake_ros</test_depend>
+
   <export>
-    <mbf_costmap_core plugin="${prefix}/bgp_plugin.xml" />
+    <build_type>ament_cmake</build_type>
+    <nav2_core plugin="${prefix}/bgp_plugin.xml" />
   </export>
 
 </package>

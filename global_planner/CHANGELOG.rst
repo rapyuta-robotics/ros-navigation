@@ -2,6 +2,12 @@
 Changelog for package global_planner
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* ROS 2 Lyrical: ``nav2_core::GlobalPlanner`` plugin ``global_planner::GlobalPlanner`` with node-free ``PlannerCore``,
+  tagged ``nav2_core`` exceptions, ``tolerance`` parameter, ``GlobalPlanner/{plan,potential,footprint_radii}`` topics
+  and unit tests; the ``planner`` node, the ``make_plan`` service and dynamic_reconfigure are removed.
+
 1.17.1 (2020-08-27)
 -------------------
 

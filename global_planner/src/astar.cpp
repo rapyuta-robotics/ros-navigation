@@ -36,7 +36,7 @@
  *         David V. Lu!!
  *********************************************************************/
 #include<global_planner/astar.h>
-#include<costmap_2d/cost_values.h>
+#include<nav2_costmap_2d/cost_values.hpp>
 
 namespace global_planner {
 
@@ -84,7 +84,7 @@ void AStarExpansion::add(unsigned char* costs, float* potential, float prev_pote
     if (potential[next_i] < POT_HIGH)
         return;
 
-    if(costs[next_i]>=lethal_cost_ && !(unknown_ && costs[next_i]==costmap_2d::NO_INFORMATION))
+    if(costs[next_i]>=lethal_cost_ && !(unknown_ && costs[next_i]==nav2_costmap_2d::NO_INFORMATION))
         return;
 
     potential[next_i] = p_calc_->calculatePotential(potential, costs[next_i] + neutral_cost_, next_i, prev_potential);
