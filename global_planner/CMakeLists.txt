@@ -8,7 +8,6 @@ add_compile_options(-Wall -Wextra -Wpedantic)
 find_package(ament_cmake REQUIRED)
 
 set(dependencies
-  angles
   geometry_msgs
   nav2_core
   nav2_costmap_2d
@@ -18,10 +17,6 @@ set(dependencies
   pluginlib
   rcl_interfaces
   rclcpp
-  rr_nav_msgs
-  tf2
-  tf2_geometry_msgs
-  visualization_msgs
 )
 foreach(dep IN LISTS dependencies)
   find_package(${dep} REQUIRED)
@@ -33,7 +28,6 @@ add_library(${PROJECT_NAME} SHARED
   src/astar.cpp
   src/grid_path.cpp
   src/gradient_path.cpp
-  src/orientation_filter.cpp
   src/planner_core.cpp
   src/parameter_handler.cpp
   src/global_planner.cpp
@@ -63,7 +57,6 @@ if(BUILD_TESTING)
   find_package(ament_cmake_ros REQUIRED)
 
   foreach(test_name
-    test_orientation_filter
     test_planner_core
     test_global_planner)
     ament_add_ros_isolated_gtest(${test_name} test/${test_name}.cpp)

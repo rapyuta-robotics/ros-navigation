@@ -75,13 +75,6 @@ ParameterHandler::ParameterHandler(const nav2::LifecycleNode::SharedPtr& node, c
         floatingRange("Factor to multiply each cost from costmap by", 0.01, 5.0));
     c.publish_potential = node->declare_or_get_parameter(prefix_ + "publish_potential", c.publish_potential,
         plain("Publish Potential Costmap"));
-    c.show_footprint_radii = node->declare_or_get_parameter(prefix_ + "show_footprint_radii",
-        c.show_footprint_radii, plain("Visualize global costmap footprint inscribed and circumscribed radii"));
-    c.orientation_mode = node->declare_or_get_parameter(prefix_ + "orientation_mode", c.orientation_mode,
-        integerRange("How to set the orientation of each point", 0, 9));
-    c.orientation_window_size = node->declare_or_get_parameter(prefix_ + "orientation_window_size",
-        c.orientation_window_size, integerRange("What window to use to determine the orientation based on the "
-        "position derivative specified by the orientation mode", 1, 255));
 
     params_.tolerance = node->declare_or_get_parameter(prefix_ + "tolerance", params_.tolerance,
         floatingRange("How many meters the planner can relax the goal constraint in x and y if the goal is obstructed",
@@ -121,12 +114,6 @@ void ParameterHandler::updateParametersCallback(const std::vector<rclcpp::Parame
             c.cost_factor = parameter.as_double();
         else if (key == "publish_potential")
             c.publish_potential = parameter.as_bool();
-        else if (key == "show_footprint_radii")
-            c.show_footprint_radii = parameter.as_bool();
-        else if (key == "orientation_mode")
-            c.orientation_mode = parameter.as_int();
-        else if (key == "orientation_window_size")
-            c.orientation_window_size = parameter.as_int();
         else if (key == "tolerance") {
             params_.tolerance = parameter.as_double();
             continue;

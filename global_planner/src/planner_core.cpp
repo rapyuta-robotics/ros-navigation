@@ -38,7 +38,6 @@
 #include <global_planner/planner_core.h>
 #include <nav2_costmap_2d/cost_values.hpp>
 #include <rclcpp/logging.hpp>
-#include <rr_nav_msgs/msg/get_path_outcome.hpp>
 
 #include <global_planner/dijkstra.h>
 #include <global_planner/astar.h>
@@ -52,8 +51,6 @@
 #include <utility>
 
 namespace global_planner {
-
-using GetPathOutcome = rr_nav_msgs::msg::GetPathOutcome;
 
 void PlannerCore::outlineMap(unsigned char* costarr, int nx, int ny, unsigned char value) {
     unsigned char* pc = costarr;
@@ -106,26 +103,17 @@ PlannerCore::PlannerCore(nav2_costmap_2d::Costmap2D* costmap, std::string frame_
     publish_scale_ = options.publish_scale;
     outline_map_ = options.outline_map;
 
-    applyConfig(config);
+    reconfigure(config);
 }
 
 PlannerCore::~PlannerCore() = default;
 
-void PlannerCore::applyConfig(const PlannerConfig& config) {
+void PlannerCore::reconfigure(const PlannerConfig& config) {
     planner_->setLethalCost(config.lethal_cost);
     path_maker_->setLethalCost(config.lethal_cost);
     planner_->setNeutralCost(config.neutral_cost);
     planner_->setFactor(config.cost_factor);
     publish_potential_ = config.publish_potential;
-    show_footprint_radii_ = config.show_footprint_radii;
-    orientation_filter_.setMode(config.orientation_mode);
-    orientation_filter_.setWindowSize(config.orientation_window_size);
-}
-
-void PlannerCore::reconfigure(const PlannerConfig& config) {
-    applyConfig(config);
-    if (!show_footprint_radii_)
-      clearFootprintRadii();
 }
 
 void PlannerCore::mapToWorld(double mx, double my, double& wx, double& wy) {
@@ -149,28 +137,13 @@ bool PlannerCore::worldToMap(double wx, double wy, double& mx, double& my) {
     return false;
 }
 
-uint32_t PlannerCore::makePlan(const geometry_msgs::msg::PoseStamped& start, const geometry_msgs::msg::PoseStamped& goal,
-                               double tolerance, std::vector<geometry_msgs::msg::PoseStamped>& plan,
-                               std::string& message) {
+PlanStatus PlannerCore::makePlan(const geometry_msgs::msg::PoseStamped& start,
+                                 const geometry_msgs::msg::PoseStamped& goal, double tolerance,
+                                 std::vector<geometry_msgs::msg::PoseStamped>& plan) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     //clear the plan, just in case
     plan.clear();
-
-    std::string global_frame = frame_id_;
-
-    //until tf can handle transforming things that are way in the past... we'll require the goal to be in our global frame
-    if (goal.header.frame_id != global_frame) {
-      message = "The goal pose passed to this planner must be in the " + global_frame + " frame. It is instead in the " + goal.header.frame_id + " frame";
-      RCLCPP_ERROR_STREAM(logger_, message);
-      return GetPathOutcome::INVALID_GOAL;
-    }
-
-    if (start.header.frame_id != global_frame) {
-        message = "The start pose passed to this planner must be in the " + global_frame + " frame. It is instead in the " + start.header.frame_id + " frame";
-        RCLCPP_ERROR_STREAM(logger_, message);
-        return GetPathOutcome::INVALID_START;
-    }
 
     double wx = start.pose.position.x;
     double wy = start.pose.position.y;
@@ -179,9 +152,8 @@ uint32_t PlannerCore::makePlan(const geometry_msgs::msg::PoseStamped& start, con
     double start_x, start_y, goal_x, goal_y;
 
     if (!costmap_->worldToMap(wx, wy, start_x_i, start_y_i)) {
-        message = "The robot's start position is off the global costmap. Planning will always fail, are you sure the robot has been properly localized?";
-        RCLCPP_ERROR_STREAM(logger_, message);
-        return GetPathOutcome::OUT_OF_MAP;
+        RCLCPP_ERROR(logger_, "The robot's start position is off the global costmap. Planning will always fail, are you sure the robot has been properly localized?");
+        return PlanStatus::StartOutsideMap;
     }
     if(old_navfn_behavior_){
         start_x = start_x_i;
@@ -194,27 +166,14 @@ uint32_t PlannerCore::makePlan(const geometry_msgs::msg::PoseStamped& start, con
     wy = goal.pose.position.y;
 
     if (!costmap_->worldToMap(wx, wy, goal_x_i, goal_y_i)) {
-        message = "The goal sent to the global planner is off the global costmap. Planning will always fail to this goal";
-        RCLCPP_ERROR_STREAM(logger_, message);
-        return GetPathOutcome::OUT_OF_MAP;
+        RCLCPP_ERROR(logger_, "The goal sent to the global planner is off the global costmap. Planning will always fail to this goal");
+        return PlanStatus::GoalOutsideMap;
     }
     if(old_navfn_behavior_){
         goal_x = goal_x_i;
         goal_y = goal_y_i;
     }else{
         worldToMap(wx, wy, goal_x, goal_y);
-    }
-
-    // check if either start or goal poses are in collision
-    if (costmap_->getCost(start_x_i, start_y_i) >= nav2_costmap_2d::INSCRIBED_INFLATED_OBSTACLE) {
-      message = "The start pose is in collision. Planning from this pose will always fail";
-      RCLCPP_ERROR_STREAM(logger_, message);
-      return GetPathOutcome::BLOCKED_START;
-    }
-    if (tolerance == 0 && costmap_->getCost(goal_x_i, goal_y_i) >= nav2_costmap_2d::INSCRIBED_INFLATED_OBSTACLE) {
-      message = "The goal pose is in collision, and the tolerance is set to zero";
-      RCLCPP_ERROR_STREAM(logger_, message);
-      return GetPathOutcome::BLOCKED_GOAL;
     }
 
     int nx = costmap_->getSizeInCellsX(), ny = costmap_->getSizeInCellsY();
@@ -233,13 +192,11 @@ uint32_t PlannerCore::makePlan(const geometry_msgs::msg::PoseStamped& start, con
 
 
     geometry_msgs::msg::PoseStamped best_pose = goal;
-    bool goal_blocked = !found_legal;
     if (!found_legal) {
       // calculatePotentials did not result in a valid potential at the goal cell:
       // Check if any cells within tolerance around the goal have a valid potential:
-      // - if so, set found_legal to true and displace the goal,
-      //   such the getPlanFromPotential will generate a path to the displaced goal
-      // - if not, check whether any of the cells are even in free space (if not, report goal blocked)
+      // if so, set found_legal to true and displace the goal,
+      // such the getPlanFromPotential will generate a path to the displaced goal
       double resolution = costmap_->getResolution();
       geometry_msgs::msg::PoseStamped p = goal;
 
@@ -254,7 +211,8 @@ uint32_t PlannerCore::makePlan(const geometry_msgs::msg::PoseStamped& start, con
       const double step_size = std::min(0.5 * resolution, 0.999*reduced_tolerance);
 
       unsigned int mx, my;
-      for(double dy = -reduced_tolerance; dy <= reduced_tolerance; dy += step_size){
+      // A non-positive step would never advance the sampling.
+      for(double dy = -reduced_tolerance; step_size > 0 && dy <= reduced_tolerance; dy += step_size){
         p.pose.position.y = goal.pose.position.y + dy;
         const double dx = std::sqrt(reduced_tolerance*reduced_tolerance - dy*dy);
         for(p.pose.position.x = goal.pose.position.x - dx; p.pose.position.x <= goal.pose.position.x + dx; p.pose.position.x += step_size){
@@ -268,9 +226,6 @@ uint32_t PlannerCore::makePlan(const geometry_msgs::msg::PoseStamped& start, con
                 best_sdist = sdist;
                 best_pose = p;
                 found_legal = true;
-                goal_blocked = false;
-              } else if (costmap_->getCost(goal_x_i, goal_y_i) < nav2_costmap_2d::INSCRIBED_INFLATED_OBSTACLE) {
-                goal_blocked = false;
               }
             }
         }
@@ -290,15 +245,6 @@ uint32_t PlannerCore::makePlan(const geometry_msgs::msg::PoseStamped& start, con
         planner_->clearEndpoint(costmap_->getCharMap(), potential_array_.get(), goal_x_i, goal_y_i, 2);
     if(publish_potential_)
         publishPotential(potential_array_.get());
-    if(show_footprint_radii_)
-      showFootprintRadii();
-
-    if (goal_blocked) {
-      message = "All cells around the goal within the tolerance are in collision";
-      RCLCPP_ERROR_STREAM(logger_, message);
-      potential_array_.reset();
-      return GetPathOutcome::BLOCKED_GOAL;
-    }
 
     if (found_legal) {
         //extract the plan
@@ -307,24 +253,16 @@ uint32_t PlannerCore::makePlan(const geometry_msgs::msg::PoseStamped& start, con
             best_pose.header.stamp = clock_->now();
             plan.push_back(best_pose);
         } else {
-            message = "Failed to get a plan from potential when a legal potential was found. This shouldn't happen";
-            RCLCPP_ERROR_STREAM(logger_, message);
+            RCLCPP_ERROR(logger_, "Failed to get a plan from potential when a legal potential was found. This shouldn't happen");
         }
     }else{
-        message = "Failed to get a plan";
-        RCLCPP_ERROR_STREAM(logger_, message);
+        RCLCPP_ERROR(logger_, "Failed to get a plan");
     }
 
-    // add orientations if needed
-    orientation_filter_.processPath(start, plan);
-
-    //publish the plan for visualization purposes
-    publishPlan(plan);
     potential_array_.reset();
-    return plan.empty() ? GetPathOutcome::NO_PATH_FOUND : GetPathOutcome::SUCCESS;
-}
-
-void PlannerCore::publishPlan(const std::vector<geometry_msgs::msg::PoseStamped>& /*path*/) {
+    if (!found_legal)
+        return PlanStatus::NoPotential;
+    return plan.empty() ? PlanStatus::ExtractionFailed : PlanStatus::Success;
 }
 
 bool PlannerCore::getPlanFromPotential(double start_x, double start_y, double goal_x, double goal_y,
@@ -415,14 +353,6 @@ nav_msgs::msg::OccupancyGrid PlannerCore::potentialGrid(const float* potential_a
         }
     }
     return grid;
-}
-
-void PlannerCore::showFootprintRadii()
-{
-}
-
-void PlannerCore::clearFootprintRadii()
-{
 }
 
 } //end namespace global_planner

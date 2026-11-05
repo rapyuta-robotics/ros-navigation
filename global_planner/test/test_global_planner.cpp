@@ -8,12 +8,10 @@
 #include <memory>
 #include <mutex>
 #include <string>
-#include <typeinfo>
 #include <thread>
+#include <typeinfo>
 #include <vector>
 
-#include <angles/angles.h>
-#include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <nav2_core/planner_exceptions.hpp>
 #include <nav2_costmap_2d/cost_values.hpp>
@@ -23,11 +21,6 @@
 #include <nav_msgs/msg/path.hpp>
 #include <pluginlib/class_loader.hpp>
 #include <rclcpp/rclcpp.hpp>
-#include <rr_nav_msgs/msg/get_path_outcome.hpp>
-#include <tf2/LinearMath/Quaternion.hpp>
-#include <tf2/utils.hpp>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-#include <visualization_msgs/msg/marker.hpp>
 
 #include "global_planner/global_planner.h"
 
@@ -36,20 +29,15 @@ using namespace std::chrono_literals;
 namespace
 {
 using geometry_msgs::msg::PoseStamped;
-using Outcome = rr_nav_msgs::msg::GetPathOutcome;
 
-PoseStamped pose(double x, double y, double yaw = 0.0, const std::string& frame = "map")
+PoseStamped pose(double x, double y, double yaw = 0.0)
 {
   PoseStamped p;
-  p.header.frame_id = frame;
+  p.header.frame_id = "map";
   p.pose.position.x = x;
   p.pose.position.y = y;
-  tf2::Quaternion q;
-  q.setRPY(0.0, 0.0, yaw);
-  p.pose.orientation.x = q.x();
-  p.pose.orientation.y = q.y();
-  p.pose.orientation.z = q.z();
-  p.pose.orientation.w = q.w();
+  p.pose.orientation.z = std::sin(yaw / 2.0);
+  p.pose.orientation.w = std::cos(yaw / 2.0);
   return p;
 }
 
@@ -58,9 +46,9 @@ bool notCanceled()
   return false;
 }
 
-/** Expects @p call to throw exactly @p E with the message tagged with @p code. */
+/** Expects @p call to throw exactly @p E with an untagged message. */
 template <typename E>
-void expectTagged(const std::function<void()>& call, uint32_t code)
+void expectThrows(const std::function<void()>& call)
 {
   try
   {
@@ -70,23 +58,8 @@ void expectTagged(const std::function<void()>& call, uint32_t code)
   catch (const std::exception& e)
   {
     EXPECT_EQ(typeid(e), typeid(E)) << "unexpected exception type for: " << e.what();
-    const std::string tag = "[rr_code=" + std::to_string(code) + "] ";
-    EXPECT_EQ(std::string(e.what()).rfind(tag, 0), 0u) << e.what();
+    EXPECT_EQ(std::string(e.what()).find("[rr_code="), std::string::npos) << e.what();
   }
-}
-
-/** Expects the same poses as @p reference with every yaw but the goal's turned by @p offset. */
-void expectYawOffset(const nav_msgs::msg::Path& reference, const nav_msgs::msg::Path& path, double offset)
-{
-  ASSERT_EQ(path.poses.size(), reference.poses.size());
-  for (std::size_t i = 0; i + 1 < path.poses.size(); ++i)
-  {
-    EXPECT_EQ(path.poses[i].pose.position, reference.poses[i].pose.position);
-    const double turn = angles::shortest_angular_distance(tf2::getYaw(reference.poses[i].pose.orientation),
-                                                          tf2::getYaw(path.poses[i].pose.orientation));
-    EXPECT_NEAR(std::fabs(turn), offset, 1e-6) << "pose " << i;
-  }
-  EXPECT_EQ(path.poses.back().pose, reference.poses.back().pose);
 }
 
 class GlobalPlannerTest : public ::testing::Test
@@ -119,17 +92,16 @@ protected:
     costmap_ros_->getCostmap()->resizeMap(100, 100, 0.05, 0.0, 0.0);
   }
 
-  void configure()
+  void configure(const std::string& name = "GlobalPlanner")
   {
     planner_ = std::make_unique<global_planner::GlobalPlanner>();
-    planner_->configure(node_, "GlobalPlanner", nullptr, costmap_ros_);
+    planner_->configure(node_, name, nullptr, costmap_ros_);
     planner_->activate();
   }
 
-  nav_msgs::msg::Path createPlan(const PoseStamped& start, const PoseStamped& goal,
-                                 const std::vector<PoseStamped>& viapoints = {})
+  nav_msgs::msg::Path createPlan(const PoseStamped& start, const PoseStamped& goal)
   {
-    return planner_->createPlan(start, goal, viapoints, notCanceled);
+    return planner_->createPlan(start, goal, {}, notCanceled);
   }
 
   bool setParameter(const rclcpp::Parameter& parameter)
@@ -137,7 +109,7 @@ protected:
     return node_->set_parameter(parameter).successful;
   }
 
-  /** Lethal block of cells [x0, x1] x [y0, y1]. */
+  /** Cells [x0, x1] x [y0, y1] set to @p cost. */
   void block(unsigned int x0, unsigned int y0, unsigned int x1, unsigned int y1, unsigned char cost)
   {
     for (unsigned int x = x0; x <= x1; ++x)
@@ -178,11 +150,11 @@ TEST(GlobalPlannerPlugin, IsExportedForNav2Core)
   EXPECT_NO_THROW(loader.createSharedInstance("global_planner::GlobalPlanner"));
 }
 
-TEST_F(GlobalPlannerTest, NotConfiguredIsTaggedNotInitialized)
+TEST_F(GlobalPlannerTest, CreatePlanBeforeConfigureThrows)
 {
   global_planner::GlobalPlanner planner;
-  expectTagged<nav2_core::PlannerException>(
-      [&] { planner.createPlan(pose(1.0, 1.0), pose(3.0, 1.0), {}, notCanceled); }, Outcome::NOT_INITIALIZED);
+  expectThrows<nav2_core::PlannerException>(
+      [&] { planner.createPlan(pose(1.0, 1.0), pose(3.0, 1.0), {}, notCanceled); });
 }
 
 TEST_F(GlobalPlannerTest, SuccessReturnsAPlanInTheCostmapFrame)
@@ -195,24 +167,16 @@ TEST_F(GlobalPlannerTest, SuccessReturnsAPlanInTheCostmapFrame)
   EXPECT_EQ(path.poses.back().pose, goal.pose);
 }
 
-TEST_F(GlobalPlannerTest, OutcomesThrowTaggedNav2Exceptions)
+TEST_F(GlobalPlannerTest, FailuresThrowUntaggedNav2Exceptions)
 {
   configure();
   const PoseStamped start = pose(1.01, 1.01);
   const PoseStamped goal = pose(3.01, 3.01);
-  expectTagged<nav2_core::StartOutsideMapBounds>([&] { createPlan(pose(-1.0, 1.0), goal); }, Outcome::OUT_OF_MAP);
-  expectTagged<nav2_core::GoalOutsideMapBounds>([&] { createPlan(start, pose(6.0, 1.0)); }, Outcome::OUT_OF_MAP);
-  expectTagged<nav2_core::PlannerException>([&] { createPlan(start, pose(3.0, 1.0, 0.0, "odom")); },
-                                            Outcome::INVALID_GOAL);
-  expectTagged<nav2_core::PlannerException>([&] { createPlan(pose(1.0, 1.0, 0.0, "odom"), goal); },
-                                            Outcome::INVALID_START);
-
-  block(20, 20, 20, 20, nav2_costmap_2d::INSCRIBED_INFLATED_OBSTACLE);
-  expectTagged<nav2_core::StartOccupied>([&] { createPlan(start, goal); }, Outcome::BLOCKED_START);
-  block(20, 20, 20, 20, nav2_costmap_2d::FREE_SPACE);
+  expectThrows<nav2_core::StartOutsideMapBounds>([&] { createPlan(pose(-1.0, 1.0), goal); });
+  expectThrows<nav2_core::GoalOutsideMapBounds>([&] { createPlan(start, pose(6.0, 1.0)); });
 
   block(60, 60, 60, 60, nav2_costmap_2d::LETHAL_OBSTACLE);
-  expectTagged<nav2_core::GoalOccupied>([&] { createPlan(start, goal); }, Outcome::BLOCKED_GOAL);
+  expectThrows<nav2_core::NoValidPathCouldBeFound>([&] { createPlan(start, goal); });
   block(60, 60, 60, 60, nav2_costmap_2d::FREE_SPACE);
 
   // Enclosed free goal with a tolerance that stays inside the enclosure.
@@ -221,17 +185,17 @@ TEST_F(GlobalPlannerTest, OutcomesThrowTaggedNav2Exceptions)
   block(50, 50, 50, 70, nav2_costmap_2d::LETHAL_OBSTACLE);
   block(70, 50, 70, 70, nav2_costmap_2d::LETHAL_OBSTACLE);
   ASSERT_TRUE(setParameter(rclcpp::Parameter("GlobalPlanner.tolerance", 0.3)));
-  expectTagged<nav2_core::NoValidPathCouldBeFound>([&] { createPlan(start, goal); }, Outcome::NO_PATH_FOUND);
-  // With zero tolerance the same free but unreachable goal is reported blocked.
-  ASSERT_TRUE(setParameter(rclcpp::Parameter("GlobalPlanner.tolerance", 0.0)));
-  expectTagged<nav2_core::GoalOccupied>([&] { createPlan(start, goal); }, Outcome::BLOCKED_GOAL);
+  expectThrows<nav2_core::NoValidPathCouldBeFound>([&] { createPlan(start, goal); });
 }
 
-TEST_F(GlobalPlannerTest, ViapointsAreRejectedAsInvalidGoal)
+TEST_F(GlobalPlannerTest, ExtractionFailureReturnsAnEmptyPath)
 {
+  makeNode({ rclcpp::Parameter("GlobalPlanner.use_grid_path", true) });
   configure();
-  expectTagged<nav2_core::PlannerException>(
-      [&] { createPlan(pose(1.01, 1.01), pose(3.01, 1.01), { pose(2.0, 1.0) }); }, Outcome::INVALID_GOAL);
+  // Start near the far corner of its cell: the grid path trace oscillates around the start cell and gives up.
+  const auto path = createPlan(pose(20.99 * 0.05, 20.99 * 0.05), pose(3.01, 1.01));
+  EXPECT_TRUE(path.poses.empty());
+  EXPECT_EQ(path.header.frame_id, costmap_ros_->getGlobalFrameID());
 }
 
 TEST_F(GlobalPlannerTest, ToleranceParameterAppliesToTheNextPlan)
@@ -240,7 +204,7 @@ TEST_F(GlobalPlannerTest, ToleranceParameterAppliesToTheNextPlan)
   block(55, 15, 65, 25, nav2_costmap_2d::LETHAL_OBSTACLE);  // goal cell (60, 20) inside, 0.25 m to the edge
   const PoseStamped start = pose(1.01, 1.01);
   const PoseStamped goal = pose(3.01, 1.01, 0.2);
-  expectTagged<nav2_core::GoalOccupied>([&] { createPlan(start, goal); }, Outcome::BLOCKED_GOAL);
+  expectThrows<nav2_core::NoValidPathCouldBeFound>([&] { createPlan(start, goal); });
   ASSERT_TRUE(setParameter(rclcpp::Parameter("GlobalPlanner.tolerance", 0.4)));
   const auto path = createPlan(start, goal);
   ASSERT_FALSE(path.poses.empty());
@@ -249,30 +213,18 @@ TEST_F(GlobalPlannerTest, ToleranceParameterAppliesToTheNextPlan)
   EXPECT_EQ(end.orientation, goal.pose.orientation);
 }
 
-TEST_F(GlobalPlannerTest, OrientationModeParameterAppliesToTheNextPlan)
-{
-  configure();
-  const PoseStamped start = pose(1.01, 1.01);
-  const PoseStamped goal = pose(4.01, 1.01);
-  const auto forward = createPlan(start, goal);
-  ASSERT_TRUE(setParameter(rclcpp::Parameter("GlobalPlanner.orientation_mode", 4)));
-  expectYawOffset(forward, createPlan(start, goal), M_PI);
-}
-
 TEST_F(GlobalPlannerTest, ParameterRangesAndReadOnlyParametersAreEnforced)
 {
   configure();
-  EXPECT_FALSE(setParameter(rclcpp::Parameter("GlobalPlanner.orientation_mode", 10)));
-  EXPECT_FALSE(setParameter(rclcpp::Parameter("GlobalPlanner.orientation_mode", -1)));
-  EXPECT_TRUE(setParameter(rclcpp::Parameter("GlobalPlanner.orientation_mode", 9)));
   EXPECT_FALSE(setParameter(rclcpp::Parameter("GlobalPlanner.lethal_cost", 0)));
   EXPECT_FALSE(setParameter(rclcpp::Parameter("GlobalPlanner.lethal_cost", 256)));
+  EXPECT_TRUE(setParameter(rclcpp::Parameter("GlobalPlanner.lethal_cost", 254)));
   EXPECT_FALSE(setParameter(rclcpp::Parameter("GlobalPlanner.neutral_cost", 0)));
   EXPECT_FALSE(setParameter(rclcpp::Parameter("GlobalPlanner.cost_factor", 5.5)));
   EXPECT_TRUE(setParameter(rclcpp::Parameter("GlobalPlanner.cost_factor", 0.55)));
-  EXPECT_FALSE(setParameter(rclcpp::Parameter("GlobalPlanner.orientation_window_size", 0)));
   EXPECT_FALSE(setParameter(rclcpp::Parameter("GlobalPlanner.tolerance", -0.1)));
-  EXPECT_FALSE(setParameter(rclcpp::Parameter("GlobalPlanner.orientation_mode", "forward")));
+  EXPECT_FALSE(setParameter(rclcpp::Parameter("GlobalPlanner.tolerance", "wide")));
+  EXPECT_TRUE(setParameter(rclcpp::Parameter("GlobalPlanner.publish_potential", false)));
   for (const auto& name : { "old_navfn_behavior", "use_quadratic", "use_dijkstra", "use_grid_path", "allow_unknown",
                             "outline_map" })
   {
@@ -282,9 +234,24 @@ TEST_F(GlobalPlannerTest, ParameterRangesAndReadOnlyParametersAreEnforced)
   EXPECT_FALSE(setParameter(rclcpp::Parameter("GlobalPlanner.publish_scale", 50)));
 }
 
+TEST_F(GlobalPlannerTest, OnlyAlgorithmParametersAreDeclared)
+{
+  configure();
+  for (const auto& name : { "tolerance", "lethal_cost", "neutral_cost", "cost_factor", "publish_potential",
+                            "old_navfn_behavior", "use_quadratic", "use_dijkstra", "use_grid_path", "allow_unknown",
+                            "publish_scale", "outline_map" })
+  {
+    EXPECT_TRUE(node_->has_parameter(std::string("GlobalPlanner.") + name)) << name;
+  }
+  for (const auto& name : { "orientation_mode", "orientation_window_size", "show_footprint_radii" })
+  {
+    EXPECT_FALSE(node_->has_parameter(std::string("GlobalPlanner.") + name)) << name;
+  }
+}
+
 TEST_F(GlobalPlannerTest, OutOfRangeParameterFailsConfigure)
 {
-  makeNode({ rclcpp::Parameter("GlobalPlanner.orientation_mode", 12) });
+  makeNode({ rclcpp::Parameter("GlobalPlanner.lethal_cost", 300) });
   global_planner::GlobalPlanner planner;
   EXPECT_ANY_THROW(planner.configure(node_, "GlobalPlanner", nullptr, costmap_ros_));
 }
@@ -295,69 +262,53 @@ TEST_F(GlobalPlannerTest, LoadTimeParametersComeFromOverrides)
              rclcpp::Parameter("GlobalPlanner.neutral_cost", 100),
              rclcpp::Parameter("GlobalPlanner.cost_factor", 0.55) });
   configure();
+  EXPECT_EQ(node_->get_parameter("GlobalPlanner.neutral_cost").as_int(), 100);
   block(50, 0, 50, 99, nav2_costmap_2d::NO_INFORMATION);
-  expectTagged<nav2_core::GoalOccupied>([&] { createPlan(pose(1.01, 2.51), pose(4.01, 2.51)); },
-                                        Outcome::BLOCKED_GOAL);
+  expectThrows<nav2_core::NoValidPathCouldBeFound>([&] { createPlan(pose(1.01, 2.51), pose(4.01, 2.51)); });
 }
 
 TEST_F(GlobalPlannerTest, CreatePlanHoldsTheCostmapLockAndBlocksParameterUpdates)
 {
   configure();
+  block(55, 15, 65, 25, nav2_costmap_2d::LETHAL_OBSTACLE);
   const PoseStamped start = pose(1.01, 1.01);
-  const PoseStamped goal = pose(4.01, 1.01);
-  const auto forward = createPlan(start, goal);
+  const PoseStamped goal = pose(3.01, 1.01);
   std::unique_lock<nav2_costmap_2d::Costmap2D::mutex_t> costmap_lock(*costmap_ros_->getCostmap()->getMutex());
   auto planning = std::async(std::launch::async, [&] { return createPlan(start, goal); });
   EXPECT_EQ(planning.wait_for(300ms), std::future_status::timeout);
   auto setting = std::async(std::launch::async, [&] {
-    return setParameter(rclcpp::Parameter("GlobalPlanner.orientation_mode", 4));
+    return setParameter(rclcpp::Parameter("GlobalPlanner.tolerance", 0.4));
   });
   EXPECT_EQ(setting.wait_for(300ms), std::future_status::timeout);
   costmap_lock.unlock();
 
-  const auto path = planning.get();
+  // The plan in progress kept the zero tolerance; the update applies to the next plan.
+  EXPECT_THROW(planning.get(), nav2_core::NoValidPathCouldBeFound);
   EXPECT_TRUE(setting.get());
-  // The plan in progress kept the forward orientation; the update applies to the next plan.
-  expectYawOffset(forward, path, 0.0);
-  expectYawOffset(forward, createPlan(start, goal), M_PI);
+  EXPECT_FALSE(createPlan(start, goal).poses.empty());
 }
 
-TEST_F(GlobalPlannerTest, PublishesUnderThePluginName)
+TEST_F(GlobalPlannerTest, PublishesOnlyThePotentialUnderTheNestedPluginName)
 {
-  configure();
-  EXPECT_EQ(node_->count_publishers("/GlobalPlanner/plan"), 1u);
-  EXPECT_EQ(node_->count_publishers("/GlobalPlanner/potential"), 1u);
-  EXPECT_EQ(node_->count_publishers("/GlobalPlanner/footprint_radii"), 1u);
+  configure("GlobalPlanner.primary_planner");
+  const std::string topic = "/GlobalPlanner/primary_planner/potential";
+  EXPECT_EQ(node_->count_publishers(topic), 1u);
+  for (const auto& [name, types] : node_->get_topic_names_and_types())
+  {
+    EXPECT_FALSE(name.ends_with("/plan")) << name;
+    EXPECT_FALSE(name.ends_with("/footprint_radii")) << name;
+  }
 
   auto listener = std::make_shared<rclcpp::Node>("listener");
-  nav_msgs::msg::Path::SharedPtr plan;
   nav_msgs::msg::OccupancyGrid::SharedPtr potential;
-  std::vector<visualization_msgs::msg::Marker> markers;
-  auto plan_sub = listener->create_subscription<nav_msgs::msg::Path>(
-      "/GlobalPlanner/plan", 10, [&](nav_msgs::msg::Path::SharedPtr msg) { plan = msg; });
   auto potential_sub = listener->create_subscription<nav_msgs::msg::OccupancyGrid>(
-      "/GlobalPlanner/potential", 10, [&](nav_msgs::msg::OccupancyGrid::SharedPtr msg) { potential = msg; });
-  auto radii_sub = listener->create_subscription<visualization_msgs::msg::Marker>(
-      "/GlobalPlanner/footprint_radii", 10,
-      [&](visualization_msgs::msg::Marker::SharedPtr msg) { markers.push_back(*msg); });
-  ASSERT_TRUE(spinUntil(listener, [&] {
-    return node_->count_subscribers("/GlobalPlanner/plan") == 1 &&
-           node_->count_subscribers("/GlobalPlanner/potential") == 1 &&
-           node_->count_subscribers("/GlobalPlanner/footprint_radii") == 1;
-  }));
+      topic, 10, [&](nav_msgs::msg::OccupancyGrid::SharedPtr msg) { potential = msg; });
+  ASSERT_TRUE(spinUntil(listener, [&] { return node_->count_subscribers(topic) == 1; }));
 
-  const auto path = createPlan(pose(1.01, 1.01), pose(3.01, 1.01));
-  ASSERT_TRUE(spinUntil(listener, [&] { return plan && potential && markers.size() == 2; }));
-  EXPECT_EQ(plan->poses.size(), path.poses.size());
+  createPlan(pose(1.01, 1.01), pose(3.01, 1.01));
+  ASSERT_TRUE(spinUntil(listener, [&] { return potential != nullptr; }));
   EXPECT_EQ(potential->info.width, 100u);
-  EXPECT_EQ(markers[0].ns, "inscribed_radius");
-  EXPECT_EQ(markers[1].ns, "circumscribed_radius");
-  EXPECT_EQ(markers[0].header.frame_id, costmap_ros_->getBaseFrameID());
-
-  markers.clear();
-  ASSERT_TRUE(setParameter(rclcpp::Parameter("GlobalPlanner.show_footprint_radii", false)));
-  ASSERT_TRUE(spinUntil(listener, [&] { return !markers.empty(); }));
-  EXPECT_EQ(markers[0].action, visualization_msgs::msg::Marker::DELETEALL);
+  EXPECT_EQ(potential->header.frame_id, costmap_ros_->getGlobalFrameID());
 }
 
 int main(int argc, char** argv)

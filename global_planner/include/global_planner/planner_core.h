@@ -39,7 +39,6 @@
  *********************************************************************/
 #define POT_HIGH 1.0e10        // unassigned cell potential
 #include <cmath>
-#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -52,7 +51,6 @@
 #include <global_planner/potential_calculator.h>
 #include <global_planner/expander.h>
 #include <global_planner/traceback.h>
-#include <global_planner/orientation_filter.h>
 
 namespace global_planner {
 
@@ -87,12 +85,20 @@ struct PlannerConfig {
     double cost_factor = 3.0;
     /** Publish the potential after every plan. */
     bool publish_potential = true;
-    /** Visualize the footprint inscribed and circumscribed radii. */
-    bool show_footprint_radii = true;
-    /** How to set the orientation of each point (OrientationMode). */
-    int orientation_mode = 1;
-    /** Window used to compute the position derivative for the orientation. */
-    int orientation_window_size = 1;
+};
+
+/** Result of PlannerCore::makePlan. */
+enum class PlanStatus {
+    /** The plan reaches the goal or the displaced goal. */
+    Success,
+    /** The start is outside the costmap. */
+    StartOutsideMap,
+    /** The goal is outside the costmap. */
+    GoalOutsideMap,
+    /** Neither the goal cell nor any sample in the tolerance disc has a potential. */
+    NoPotential,
+    /** A legal potential was found but the path extraction failed; the plan is empty. */
+    ExtractionFailed,
 };
 
 /**
@@ -111,7 +117,7 @@ class PlannerCore {
          */
         virtual ~PlannerCore();
 
-        /** Applies runtime settings and clears the footprint radii if they are disabled. */
+        /** Applies runtime settings to the next plan. */
         void reconfigure(const PlannerConfig& config);
 
         /**
@@ -121,11 +127,10 @@ class PlannerCore {
          * @param tolerance If the goal is obstructed, how many meters the planner can relax the constraint
          *        in x and y before failing
          * @param plan The plan... filled by the planner
-         * @param message Optional more detailed outcome as a string
-         * @return Result code as described on rr_nav_msgs/msg/GetPathOutcome
+         * @return Outcome of the search and of the path extraction
          */
-        uint32_t makePlan(const geometry_msgs::msg::PoseStamped& start, const geometry_msgs::msg::PoseStamped& goal,
-                          double tolerance, std::vector<geometry_msgs::msg::PoseStamped>& plan, std::string& message);
+        PlanStatus makePlan(const geometry_msgs::msg::PoseStamped& start, const geometry_msgs::msg::PoseStamped& goal,
+                            double tolerance, std::vector<geometry_msgs::msg::PoseStamped>& plan);
 
         /**
          * @brief Compute a plan to a goal after the potential for a start point has already been computed (Note: You should call computePotential first)
@@ -142,19 +147,8 @@ class PlannerCore {
                                   std::vector<geometry_msgs::msg::PoseStamped>& plan);
 
     protected:
-        /**
-         * @brief  Publish a path for visualization purposes
-         */
-        virtual void publishPlan(const std::vector<geometry_msgs::msg::PoseStamped>& path);
-
         /** Publishes the potential; the node-free planner publishes nothing. */
         virtual void publishPotential(const float* potential);
-
-        /** Publishes the footprint radii markers; the node-free planner publishes nothing. */
-        virtual void showFootprintRadii();
-
-        /** Deletes the footprint radii markers; the node-free planner publishes nothing. */
-        virtual void clearFootprintRadii();
 
         /** Occupancy grid of the potential, scaled to publish_scale. */
         nav_msgs::msg::OccupancyGrid potentialGrid(const float* potential) const;
@@ -178,20 +172,15 @@ class PlannerCore {
         }
         void mapToWorld(double mx, double my, double& wx, double& wy);
         bool worldToMap(double wx, double wy, double& mx, double& my);
-        /** Applies runtime settings without touching the markers. */
-        void applyConfig(const PlannerConfig& config);
 
         std::mutex mutex_;
 
         std::unique_ptr<PotentialCalculator> p_calc_;
         std::unique_ptr<Expander> planner_;
         std::unique_ptr<Traceback> path_maker_;
-        OrientationFilter orientation_filter_;
 
         bool publish_potential_;
         int publish_scale_;
-
-        bool show_footprint_radii_;
 
         void outlineMap(unsigned char* costarr, int nx, int ny, unsigned char value);
 
