@@ -77,7 +77,6 @@ namespace dwa_local_planner {
     stop_time_buffer_ = config.stop_time_buffer;
     oscillation_costs_.setOscillationResetDist(config.oscillation_reset_dist, config.oscillation_reset_angle);
     forward_point_distance_ = config.forward_point_distance;
-    sim_time_ = config.sim_time;
     goal_front_costs_.setXShift(forward_point_distance_);
     alignment_costs_.setXShift(forward_point_distance_);
 
@@ -372,18 +371,6 @@ namespace dwa_local_planner {
     path_costs_.setTargetPoses(front_global_plan);
     alignment_costs_.setTargetPoses(front_global_plan);
 
-    // Measure progress towards the furthest point a trajectory can reach. The end of the local plan
-    // can be around a corner, where the goal costs would pull the robot off the path as a shortcut.
-    const double goal_lookahead = planner_util_->getCurrentLimits().max_vel_x * sim_time_ + forward_point_distance_;
-    double plan_length = 0.0;
-    for (size_t i = 1; i < front_global_plan.size(); ++i) {
-      plan_length += mbf_utility::distance(front_global_plan[i - 1], front_global_plan[i]);
-      if (plan_length > goal_lookahead) {
-        front_global_plan.resize(i + 1);
-        break;
-      }
-    }
-
     // costs for not going towards the local goal as much as possible
     goal_costs_.setTargetPoses(front_global_plan);
 
@@ -394,8 +381,7 @@ namespace dwa_local_planner {
     // path for the robot center. Choosing the final position after
     // turning towards goal orientation causes instability when the
     // robot needs to make a 180 degree turn at the end
-    const auto& local_goal = front_global_plan.back().pose.position;
-    double angle_to_goal = atan2(local_goal.y - global_pose.pose.position.y, local_goal.x - global_pose.pose.position.x);
+    double angle_to_goal = atan2(goal_pose.pose.position.y - global_pose.pose.position.y, goal_pose.pose.position.x - global_pose.pose.position.x);
 
     double forward_point_distance = forward_point_distance_;
     const auto cos_angle_to_goal = cos(angle_to_goal);
