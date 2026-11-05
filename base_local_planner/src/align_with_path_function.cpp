@@ -32,7 +32,8 @@ double AlignWithPathFunction::scoreTrajectory(Trajectory &traj) {
     return 0;
   }
 
-  return std::abs(angles::normalize_angle(current_yaw_diff_ - traj.thetav_ * PREDICTION_TIME));
+  // Not normalized: wrapping would make spinning past the target cheaper than stopping at it.
+  return std::abs(current_yaw_diff_ - traj.thetav_ * PREDICTION_TIME);
 }
 
 } /* namespace base_local_planner */
