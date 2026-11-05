@@ -32,7 +32,7 @@ double AlignWithPathFunction::scoreTrajectory(Trajectory &traj) {
     return 0;
   }
 
-  return std::abs(angles::normalize_angle(current_yaw_diff_ - traj.thetav_ * PREDICTION_TIME));
+  return std::abs(current_yaw_diff_ - traj.thetav_ * PREDICTION_TIME);
 }
 
 } /* namespace base_local_planner */
