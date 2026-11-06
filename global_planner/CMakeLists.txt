@@ -1,81 +1,71 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.20)
 project(global_planner)
 
-find_package(catkin REQUIRED
-  COMPONENTS
-    angles
-    costmap_2d
-    dynamic_reconfigure
-    geometry_msgs
-    mbf_costmap_core
-    mbf_msgs
-    navfn
-    nav_msgs
-    pluginlib
-    roscpp
-    tf2_geometry_msgs
-    tf2_ros
-    visualization_msgs
-)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+add_compile_options(-Wall -Wextra -Wpedantic)
 
-generate_dynamic_reconfigure_options(
-  cfg/GlobalPlanner.cfg
-)
+find_package(ament_cmake REQUIRED)
 
-catkin_package(
-  INCLUDE_DIRS include
-  LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS
-    costmap_2d
-    dynamic_reconfigure
-    geometry_msgs
-    mbf_costmap_core
-    mbf_msgs
-    navfn
-    nav_msgs
-    pluginlib
-    roscpp
-    tf2_ros
-    visualization_msgs
+set(dependencies
+  geometry_msgs
+  nav2_core
+  nav2_costmap_2d
+  nav2_ros_common
+  nav2_util
+  nav_msgs
+  pluginlib
+  rcl_interfaces
+  rclcpp
 )
+foreach(dep IN LISTS dependencies)
+  find_package(${dep} REQUIRED)
+endforeach()
 
-include_directories(
-  include
-  ${catkin_INCLUDE_DIRS}
-)
-
-add_library(${PROJECT_NAME}
+add_library(${PROJECT_NAME} SHARED
   src/quadratic_calculator.cpp
   src/dijkstra.cpp
   src/astar.cpp
   src/grid_path.cpp
   src/gradient_path.cpp
-  src/orientation_filter.cpp
   src/planner_core.cpp
+  src/parameter_handler.cpp
+  src/global_planner.cpp
 )
-add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+foreach(dep IN LISTS dependencies)
+  target_link_libraries(${PROJECT_NAME} PUBLIC ${${dep}_TARGETS})
+endforeach()
 
-add_executable(planner
-  src/plan_node.cpp
-)
-add_dependencies(planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(planner
-  ${PROJECT_NAME}
-  ${catkin_LIBRARIES}
-)
+pluginlib_export_plugin_description_file(nav2_core bgp_plugin.xml)
 
 install(TARGETS ${PROJECT_NAME}
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})
+  EXPORT export_${PROJECT_NAME}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
 
-install(TARGETS planner
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+install(DIRECTORY include/
+  DESTINATION include/
+)
 
-install(DIRECTORY include/${PROJECT_NAME}/
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  PATTERN ".svn" EXCLUDE)
+if(BUILD_TESTING)
+  find_package(ament_cmake_ros REQUIRED)
 
-install(FILES bgp_plugin.xml
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+  foreach(test_name
+    test_planner_core
+    test_global_planner)
+    ament_add_ros_isolated_gtest(${test_name} test/${test_name}.cpp)
+    target_link_libraries(${test_name} ${PROJECT_NAME})
+  endforeach()
+endif()
+
+ament_export_include_directories(include)
+ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
+ament_export_dependencies(${dependencies})
+
+ament_package()

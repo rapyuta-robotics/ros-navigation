@@ -2,6 +2,15 @@
 Changelog for package global_planner
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* ROS 2 Lyrical: ``nav2_core::GlobalPlanner`` plugin ``global_planner::GlobalPlanner``, the inner planner for
+  ``rr_nav_planner_wrapper::PlannerWrapper`` (not meant to be used standalone): node-free ``PlannerCore``, untagged
+  ``nav2_core`` exceptions, an empty path when the extraction fails after a legal potential, ``tolerance`` parameter,
+  ``<plugin name>/potential`` topic and unit tests; the tolerance search samples nothing when its radius is not
+  positive. The ``planner`` node, the ``make_plan`` service, dynamic_reconfigure, the orientation filter and the
+  ``plan`` and ``footprint_radii`` topics are removed.
+
 1.17.1 (2020-08-27)
 -------------------
 
